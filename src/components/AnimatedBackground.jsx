@@ -3,8 +3,6 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { Points, PointMaterial } from "@react-three/drei";
 import * as THREE from "three";
 
-
-
 function ParticleCloud({ color = "#00ffff" }) {
   const ref = useRef();
   const COUNT = 3000;
@@ -67,8 +65,8 @@ function AnimatedBackground({ color = "#00ffff" }) {
       camera={{ position: [0, 0, 10], fov: 75 }}
     >
       <ResponsiveCamera>
-        <color attach="background" args={["#000"]} />
-        <ambientLight intensity={1} />
+        <color attach="background" args={["#080808"]} />
+        <ambientLight intensity={0.3} />
         <ParticleCloud color={color} />
       </ResponsiveCamera>
     </Canvas>

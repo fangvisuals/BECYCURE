@@ -5,6 +5,7 @@ export default {
     extend: {
       fontFamily: {
         'space-grotesk': ['"Space Grotesk"', 'sans-serif'],
+        'inter': ['"Inter"', 'sans-serif']
       },
       backgroundImage: {
         'techno-gradient': 'linear-gradient(90deg, #0ff 0%, #a259ff 50%, #0ff 100%)',

@@ -5,7 +5,7 @@ export default function Services() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
       <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
-        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/SERVICES MANAGÉS</h1>
+        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/ SERVICES MANAGÉS</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Nos services managés assurent la supervision, la maintenance et l’optimisation continue de vos solutions de cybersécurité, 24/7.
         </p>

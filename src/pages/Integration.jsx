@@ -10,9 +10,9 @@ export default function Integration() {
 
       {/* Contenu principal */}
       <div className="relative z-10 px-8 py-40 max-w-5xl ml-0">
-        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/INTÉGRATION</h1>
+        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/ INTÉGRATION</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
-          BECYCURE vous accompagne dans l'intégration de vos solutions de cybersécurité avec une approche modulaire, progressive et totalement adaptée à vos contraintes SI.
+          <span className='font-bold font-inter'>BECYCURE</span> vous accompagne dans l'intégration de vos solutions de cybersécurité avec une approche modulaire, progressive et totalement adaptée à vos contraintes SI.
         </p>
 
         <h2 className="text-2xl font-semibold text-white mb-4 font-space-grotesk">Une expertise multi-technologies</h2>

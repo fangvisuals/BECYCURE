@@ -21,18 +21,6 @@ export default function Blog() {
         <p className="text-gray-300 mb-6">
           Nos consultants partagent leurs recommandations pour améliorer la sécurité de votre système d’information.
         </p>
-        <div className="mt-12">
-        <Link to="/" className="button" aria-label="Retour à l'accueil">
-          <span className="button-box">
-            <svg className="button-elem out" viewBox="0 0 20 20">
-              <polyline points="12 4 6 10 12 16" stroke="#f0eeef" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <svg className="button-elem in" viewBox="0 0 20 20">
-              <polyline points="12 4 6 10 12 16" stroke="#f0eeef" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </span>
-        </Link>
-        </div>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ export default function Partenariats() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
       <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
-        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/PARTENARIATS</h1>
+        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/ PARTENARIATS</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Nous collaborons avec un écosystème de partenaires technologiques et institutionnels pour offrir des solutions innovantes et robustes.
         </p>
