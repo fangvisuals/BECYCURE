@@ -9,12 +9,12 @@ export default function Home() {
     { path: '/services', label: '/SERVICES MANAGÉS' },
     { path: '/conseil', label: '/CONSEIL' },
     { path: '/partenariats', label: '/PARTENARIATS' },
-    { path: '/blog', label: '/BLOG' },
+    { path: '/blog', label: '/ACTUALITÉS' },
   ];
 
   const externalLinks = [
-    { href: 'https://www.linkedin.com/', label: '/LINKEDIN' },
-    { href: 'https://www.youtube.com/', label: '/YOUTUBE' },
+    { href: 'https://fr.linkedin.com/company/becycure', label: '/LINKEDIN' },
+    { href: 'https://becycure.com/newsletter/', label: '/NEWSLETTER' },
   ];
 
     return (
@@ -26,9 +26,10 @@ export default function Home() {
   >
     {/* Titre */}
     <div className="space-y-3">
-      <h1 className="text-6xl lg:text-7xl font-bold leading-tight font-space-grotesk">
-        <span className="text-sky-400">L'IA</span>
-        <span className="text-white"> POUR ÉCLAIRER L'EXPERTISE</span>
+      <h1 className="title">
+        <span className="gradient-text">L'IA</span>
+        <span className="text-white opacity-90"> POUR ÉCLAIRER L'EXPERTISE </span>
+        <span className="gradient-text">HUMAINE</span>
       </h1>
     </div>
 
@@ -40,36 +41,38 @@ export default function Home() {
         <div>LES INFRASTRUCTURES NUMÉRIQUES</div>
       </div>
 
-      {/* Liens internes */}
-      <div className="mt-6 space-y-1">
-        {internalLinks.map(({ path, label }) => (
-          <Link
-            key={path}
-            to={path}
-            className="group flex items-center text-sky-400 hover:text-sky-300 transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <span>{label}</span>
-          </Link>
-        ))}
-      </div>
+{/* Liens internes */}
+<div className="mt-6 space-y-1 flex flex-col items-start">
+  {internalLinks.map(({ path, label }) => (
+    <Link
+  key={path}
+  to={path}
+  className="group inline-flex items-center text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
+>
+  <ChevronRight 
+    className="w-4 h-4 text-sky-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" 
+  />
+  <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300 ease-in-out">{label}</span>
+</Link>
+  ))}
+</div>
 
-      {/* Liens externes */}
-      <div className="mt-6">/SUIVEZ-NOUS</div>
-      <div className="space-y-1">
-        {externalLinks.map(({ href, label }) => (
-          <a
-            key={href}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group flex items-center text-sky-400 hover:text-sky-300 cursor-pointer transition-colors"
-          >
-            <ChevronRight className="w-4 h-4 text-sky-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <span>{label}</span>
-          </a>
-        ))}
-      </div>
+{/* Liens externes */}
+<div className="mt-6">/SUIVEZ-NOUS</div>
+<div className="space-y-1 flex flex-col items-start">
+  {externalLinks.map(({ href, label }) => (
+    <a
+      key={href}
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group inline-flex items-center text-sky-400 hover:text-sky-300 cursor-pointer transition-colors"
+    >
+      <ChevronRight className="w-4 h-4 text-sky-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" />
+      <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300 ease-in-out">{label}</span>
+    </a>
+  ))}
+</div>
     </div>
   </motion.div>
 );

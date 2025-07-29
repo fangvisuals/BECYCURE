@@ -4,6 +4,81 @@ body {
   height: 100%;
 }
 
+/* Empêche le contenu d'intercepter les clics */
+.main-wrapper {
+  pointer-events: none;
+}
+
+/* Autorise uniquement les éléments interactifs à recevoir les clics */
+.main-wrapper a,
+.main-wrapper button,
+.main-wrapper input,
+.main-wrapper select,
+.main-wrapper textarea {
+  pointer-events: auto;
+}
+
+/* Text effects */
+
+.gradient-text {
+  background-image: linear-gradient(to top, #0ea5e9, #2563eb); /* équivalent from-sky-400 to-blue-600 */
+  display: inline-block;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.title {
+  @apply text-6xl lg:text-7xl font-bold leading-tight font-space-grotesk;
+}
+
+/* Loader styles */
+.loader {
+  height: 2px;
+  width: 300px;
+  background: rgb(44, 44, 44);
+  position: relative;
+  overflow: hidden;
+}
+
+.loader .black_overlay {
+  background: linear-gradient(
+    87deg,
+    rgb(0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.14) 30%,
+    rgba(0, 0, 0, 0.14) 70%,
+    rgb(0, 0, 0) 100%
+  );
+  position: absolute;
+  inset: 0;
+}
+
+.loader .light {
+  width: 70px;
+  height: 100%;
+  position: absolute;
+  left: -20%;
+  top: 0;
+  background: linear-gradient(
+    87deg,
+    rgba(44, 44, 44, 0) 0%,
+    rgb(0, 204, 255) 40%,
+    rgb(0, 204, 255) 60%,
+    rgba(44, 44, 44, 0) 100%
+  );
+  animation: light 2s infinite ease-in-out;
+}
+
+@keyframes light {
+  from {
+    left: -30%;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import { HashRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 
-import AnimatedBackgroundWithRoute from "./components/AnimatedBackgroundWithRoute";
+import MorphingParticles from "./components/MorphingParticles";
 import Header from "./components/Header";
 import BackButton from "./components/BackButton";
 import Loader from "./components/Loader";
@@ -44,13 +46,11 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Bloquer scroll pendant chargement
     document.body.style.overflow = "hidden";
 
-    // Simuler un chargement initial (remplacer par fetch réel si besoin)
     const timer = setTimeout(() => {
       setLoading(false);
-      document.body.style.overflow = ""; // réactiver scroll
+      document.body.style.overflow = "";
     }, 1500);
 
     return () => {
@@ -59,7 +59,7 @@ function App() {
     };
   }, []);
 
-  if (loading) {
+   if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-[#080808] z-50">
         <Loader />
@@ -70,16 +70,19 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#080808] text-white overflow-hidden relative">
-        {/* Fond animé dynamique */}
-        <div className="fixed inset-0 z-0">
-          <AnimatedBackgroundWithRoute />
+        {/* Canvas en fond */}
+        <div className="fixed inset-0 z-0" style={{ pointerEvents: "auto" }}>
+          <Canvas camera={{ position: [3, 0, 8], fov: 35 }} dpr={[1, 2]} gl={{ alpha: true }}>
+            <ambientLight intensity={0.5} />
+            <MorphingParticles />
+            <OrbitControls enableDamping target={[0, 0, 0]} />
+          </Canvas>
         </div>
 
-        {/* Contenu au-dessus */}
-        <div className="flex flex-col min-h-screen relative z-10 pt-24">
+        {/* Contenu principal */}
+        <div className="flex flex-col min-h-screen relative z-10 pt-24 main-wrapper">
           <Header />
           <BackButton />
-
           <main className="flex-1 flex items-center justify-start px-24 overflow-hidden">
             <div className="w-full max-w-4xl">
               <AnimatedRoutes />

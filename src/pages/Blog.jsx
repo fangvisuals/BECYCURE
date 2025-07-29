@@ -5,7 +5,7 @@ export default function Blog() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
       <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
-        <h1 className="text-5xl font-bold text-sky-400 mb-8 font-space-grotesk">/BLOG</h1>
+        <h1 className="title gradient-text mb-8">/ ACTUALITÉS</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Retrouvez ici nos actualités, analyses, retours d’expérience et conseils pour renforcer votre cybersécurité.
         </p>

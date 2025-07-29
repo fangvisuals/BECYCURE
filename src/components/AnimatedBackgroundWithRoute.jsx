@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import AnimatedBackground from "./AnimatedBackground";
 import { useLocation } from "react-router-dom";
 
 function AnimatedBackgroundWithRoute() {
