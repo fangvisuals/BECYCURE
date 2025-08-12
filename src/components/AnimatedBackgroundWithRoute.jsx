@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 
+function AnimatedBackground({ color }) {
+  return (
+    <div
+      className="fixed inset-0 -z-10 transition-colors duration-500"
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
 function AnimatedBackgroundWithRoute() {
   const location = useLocation();
 
