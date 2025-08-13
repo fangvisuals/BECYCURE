@@ -35,7 +35,7 @@ export default function Home() {
 
     {/* Introduction */}
     <div className="font-mono text-sm space-y-1 text-gray-300 mt-8">
-      <div className="text-sky-400">// BIENVENUE CHEZ <span className="font-inter font-bold">BECYCURE</span></div>
+      <div className="text-green-400">// BIENVENUE CHEZ <span className="font-inter font-bold">BECYCURE</span></div>
       <div className="mt-4 space-y-1">
         <div>NOTRE MISSION EST DE PROTÉGER ET SÉCURISER</div>
         <div>LES INFRASTRUCTURES NUMÉRIQUES</div>
@@ -47,10 +47,10 @@ export default function Home() {
     <Link
   key={path}
   to={path}
-  className="group inline-flex items-center text-sky-400 hover:text-sky-300 transition-colors cursor-pointer"
+  className="group inline-flex items-center text-green-400 hover:text-green-300 transition-colors cursor-pointer"
 >
   <ChevronRight 
-    className="w-4 h-4 text-sky-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" 
+    className="w-4 h-4 text-green-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" 
   />
   <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300 ease-in-out">{label}</span>
 </Link>
@@ -66,9 +66,9 @@ export default function Home() {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="group inline-flex items-center text-sky-400 hover:text-sky-300 cursor-pointer transition-colors"
+      className="group inline-flex items-center text-green-400 hover:text-green-300 cursor-pointer transition-colors"
     >
-      <ChevronRight className="w-4 h-4 text-sky-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" />
+      <ChevronRight className="w-4 h-4 text-green-400 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-opacity transition-transform duration-300 ease-in-out" />
       <span className="ml-1 group-hover:translate-x-1 transition-transform duration-300 ease-in-out">{label}</span>
     </a>
   ))}

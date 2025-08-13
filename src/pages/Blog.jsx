@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BackButton from '../components/BackButton.jsx'
 
 export default function Blog() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
+      <div className="relative z-10 px-8 py-20 max-w-5xl mx-auto">
+        <BackButton className="mb-4" />
         <h1 className="title gradient-text mb-8">/ ACTUALITÉS</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Retrouvez ici nos actualités, analyses, retours d’expérience et conseils pour renforcer votre cybersécurité.

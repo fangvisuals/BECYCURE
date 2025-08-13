@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BackButton from '../components/BackButton.jsx'
 
 export default function Integration() {
   return (
@@ -9,7 +10,8 @@ export default function Integration() {
       {/* Fond animé avec couleur spécifique */}
 
       {/* Contenu principal */}
-      <div className="relative z-10 px-8 py-40 max-w-5xl ml-0">
+      <div className="relative z-10 px-8 py-20 max-w-5xl ml-0">
+        <BackButton className="mb-4" />
         <h1 className="title gradient-text mb-8">/ INTÉGRATION</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           <span className='font-bold font-inter'>BECYCURE</span> vous accompagne dans l'intégration de vos solutions de cybersécurité avec une approche modulaire, progressive et totalement adaptée à vos contraintes SI.

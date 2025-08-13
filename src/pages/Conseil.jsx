@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BackButton from '../components/BackButton.jsx'
 
 export default function Conseil() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
+      <div className="relative z-10 px-8 py-20 max-w-5xl mx-auto">
+        <BackButton className="mb-4" />
         <h1 className="title gradient-text mb-8">/ CONSEIL</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Nos experts vous accompagnent dans la définition, la mise en œuvre et l’optimisation de votre stratégie cybersécurité.

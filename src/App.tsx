@@ -2,20 +2,37 @@ import React, { useState, useEffect } from "react";
 import { ChevronRight } from "lucide-react";
 import { HashRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
+// import { OrbitControls } from "@react-three/drei"; // (facultatif pour un fond)
 
-import MorphingParticles from "./components/MorphingParticles";
 import Header from "./components/Header";
 import BackButton from "./components/BackButton";
 import Loader from "./components/Loader";
+import BackgroundCanvas from "./components/BackgroundCanvas.jsx";
 
-import Home from "./pages/Home";
+
+import Home from "./pages/Home.jsx";
 import Integration from "./pages/Integration";
 import Services from "./pages/Services";
 import Conseil from "./pages/Conseil";
 import Partenariats from "./pages/Partenariats";
 import Blog from "./pages/Blog";
+
+// Respecte le base Vite (ex: "/BECYCURE/")
+const BASE = import.meta.env.BASE_URL || "/";
+
+const SHAPES = [
+  { id: "home",     url: `${BASE}models/home.glb` },
+  { id: "services", url: `${BASE}models/services.glb` },
+  { id: "blog",     url: `${BASE}models/blog.glb` },
+];
+
+// Mappe la route -> forme active
+const routeMap = (pathname: string, _hash: string) => {
+  // Avec HashRouter, privilégier la route pour piloter la forme.
+  if (pathname.startsWith("/services")) return "services";
+  if (pathname.startsWith("/blog")) return "blog";
+  return "home";
+};
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -59,7 +76,7 @@ function App() {
     };
   }, []);
 
-   if (loading) {
+  if (loading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-[#080808] z-50">
         <Loader />
@@ -71,18 +88,11 @@ function App() {
     <Router>
       <div className="min-h-screen bg-[#080808] text-white overflow-hidden relative">
         {/* Canvas en fond */}
-        <div className="fixed inset-0 z-0" style={{ pointerEvents: "auto" }}>
-          <Canvas camera={{ position: [3, 0, 8], fov: 35 }} dpr={[1, 2]} gl={{ alpha: true }}>
-            <ambientLight intensity={0.5} />
-            <MorphingParticles />
-            <OrbitControls enableDamping target={[0, 0, 0]} />
-          </Canvas>
-        </div>
+          <BackgroundCanvas />
 
         {/* Contenu principal */}
         <div className="flex flex-col min-h-screen relative z-10 pt-24 main-wrapper">
           <Header />
-          <BackButton />
           <main className="flex-1 flex items-center justify-start px-24 overflow-hidden">
             <div className="w-full max-w-4xl">
               <AnimatedRoutes />
@@ -90,9 +100,9 @@ function App() {
           </main>
 
           <div className="fixed bottom-8 left-8 z-20">
-            <div className="flex items-center font-mono text-sky-400">
+            <div className="flex items-center font-mono text-green-400">
               <ChevronRight className="w-4 h-4" />
-              <div className="w-2 h-5 bg-sky-400 ml-1 animate-blink"></div>
+              <div className="w-2 h-5 bg-green-400 ml-1 animate-blink"></div>
             </div>
           </div>
         </div>

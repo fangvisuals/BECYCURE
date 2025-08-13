@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import BackButton from '../components/BackButton.jsx'
 
 export default function Services() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      <div className="relative z-10 px-8 py-40 max-w-5xl mx-auto">
+      <div className="relative z-10 px-8 py-20 max-w-5xl mx-auto">
+        <BackButton className="mb-4" />
         <h1 className="title gradient-text mb-8">/ SERVICES MANAGÉS</h1>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Nos services managés assurent la supervision, la maintenance et l’optimisation continue de vos solutions de cybersécurité, 24/7.
