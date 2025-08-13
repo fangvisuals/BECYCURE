@@ -19,8 +19,12 @@ float easeInOutCubic(float t) {
     : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0;
 }
 
+float smoothstep01(float t) {
+  return t * t * (3.0 - 2.0 * t);
+}
+
 void main() {
-  float t = easeInOutCubic(clamp(uProgress, 0.0, 1.0));
+  float t = smoothstep01(clamp(uProgress, 0.0, 1.0)); //easeInOutCubic(clamp(uProgress, 0.0, 1.0));
   vMix = t;
   vRnd = aSeed;
 
@@ -32,4 +36,5 @@ void main() {
 
   float perspective = clamp(1.0 / -mv.z, 0.0, 4.0);
   gl_PointSize = aSize * uSize * uResolution.y * perspective;
+  
 }

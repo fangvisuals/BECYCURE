@@ -1,45 +1,38 @@
+// src/shaders/particles/fragment.glsl
 precision highp float;
 
 uniform vec3 uColorA;
 uniform vec3 uColorB;
 
-// 🔥 paramètres d'éclat
-uniform float uIntensity;   // >1.0 = plus lumineux
-uniform float uCore;        // rayon du cœur très lumineux (0..1)
-uniform float uFalloff;     // largeur de la bordure douce (0..1)
-uniform float uMixToWhite;  // tire vers le blanc au centre (0..1)
+uniform float uIntensity;     // boost global (utilisé avec additive)
+uniform float uMixToWhite;    // tire vers le blanc au centre (0..1)
 
-// ✨ scintillement
-uniform float uTime;
-uniform float uSparkleStrength; // 0..1 (0.0 = off)
-uniform float uSparkleSpeed;    // Hz (0.0 = off)
+uniform float uTime;          // pour le scintillement
+uniform float uSparkleStrength; // 0..1
+uniform float uSparkleSpeed;    // Hz
 
-varying float vMix;
-varying float vRnd;
+varying float vMix;           // gardé pour compat, non utilisé ici
+varying float vRnd;           // seed par particule (0..1)
 
 void main() {
-  // masque circulaire
-  vec2 p = gl_PointCoord - 0.5;
-  float d = length(p) * 2.0; // 0 centre → ~1 bords
+  // ---- masque de point & halo 1/d (style demandé) ----
+  vec2 uv = gl_PointCoord;                 // 0..1
+  float d = length(uv - 0.5);              // distance au centre
+  // évite la division par 0, mêmes constantes que l’exemple
+  float alpha = 0.05 / max(d, 0.001) - 0.1;
+  if (alpha <= 0.0) discard;               // coupe proprement le bord
 
-  // alpha radial
-  float inner = 1.0 - uFalloff;
-  float alpha = 1.0 - smoothstep(inner, 1.0, d);
+  // ---- couleur: A/B coexistent en permanence (par particule) ----
+  vec3 color = mix(uColorA, uColorB, vRnd);
 
-  // cœur lumineux
-  float core = 1.0 - smoothstep(0.0, uCore, d);
+  // option “néon” : centre un peu plus blanc (suivant uMixToWhite)
+  float center = 1.0 - smoothstep(0.0, 0.20, d); // 0.20 ≈ cœur ~20% du disque
+  color = mix(color, vec3(1.0), center * uMixToWhite);
 
-  // couleur mixée selon le morph
-  vec3 color = mix(uColorA, uColorB, clamp(vMix, 0.0, 1.0));
-  color = mix(color, vec3(1.0), core * uMixToWhite);
-
-  // ✨ sparkle (flicker subtil par particule)
+  // ---- scintillement subtil (alpha) ----
   float sparkle = 0.5 + 0.5 * sin(uTime * uSparkleSpeed + vRnd * 6.2831853);
   float sparkleFactor = mix(1.0 - uSparkleStrength, 1.0 + uSparkleStrength, sparkle);
 
-  vec3 outColor = color * (uIntensity);
-  alpha *= sparkleFactor;
-
-  if (alpha <= 0.001) discard;
-  gl_FragColor = vec4(outColor, alpha);
+  // ---- sortie (additive + toneMapped=false côté material) ----
+  gl_FragColor = vec4(color * uIntensity, clamp(alpha, 0.0, 1.0) * sparkleFactor);
 }
