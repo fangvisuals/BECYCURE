@@ -1,38 +1,22 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { HashRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-// import { OrbitControls } from "@react-three/drei"; // (facultatif pour un fond)
 
-import Header from "./components/Header";
+import BrandLink from "./components/BrandLink";
 import BackButton from "./components/BackButton";
 import Loader from "./components/Loader";
-import BackgroundCanvas from "./components/BackgroundCanvas.jsx";
 
+// 🔻 lazy split : le fond 3D (three + r3f + loaders) sort du bundle principal
+const BackgroundCanvas = lazy(() => import("./components/BackgroundCanvas.jsx"));
 
-import Home from "./pages/Home.jsx";
-import Integration from "./pages/Integration";
-import Services from "./pages/Services";
-import Conseil from "./pages/Conseil";
-import Partenariats from "./pages/Partenariats";
-import Blog from "./pages/Blog";
-
-// Respecte le base Vite (ex: "/BECYCURE/")
-const BASE = import.meta.env.BASE_URL || "/";
-
-const SHAPES = [
-  { id: "home",     url: `${BASE}models/home.glb` },
-  { id: "services", url: `${BASE}models/services.glb` },
-  { id: "blog",     url: `${BASE}models/blog.glb` },
-];
-
-// Mappe la route -> forme active
-const routeMap = (pathname: string, _hash: string) => {
-  // Avec HashRouter, privilégier la route pour piloter la forme.
-  if (pathname.startsWith("/services")) return "services";
-  if (pathname.startsWith("/blog")) return "blog";
-  return "home";
-};
+// ——— Pages ———
+const Home         = lazy(() => import("./pages/Home.jsx"));
+const Integration  = lazy(() => import("./pages/Integration"));
+const Services     = lazy(() => import("./pages/Services"));
+const Conseil      = lazy(() => import("./pages/Conseil"));
+const Partenariats = lazy(() => import("./pages/Partenariats"));
+const Blog         = lazy(() => import("./pages/Blog"));
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -46,33 +30,47 @@ function AnimatedRoutes() {
         transition={{ duration: 0.4 }}
         className="w-full"
       >
-        <Routes location={location}>
-          <Route path="/" element={<Home />} />
-          <Route path="/integration" element={<Integration />} />
-          <Route path="/services" element={<Services />} />
-          <Route path="/conseil" element={<Conseil />} />
-          <Route path="/partenariats" element={<Partenariats />} />
-          <Route path="/blog" element={<Blog />} />
+        <Suspense fallback={null}>
+          <Routes location={location}>
+            <Route path="/" element={<Home />} />
+            <Route path="/integration" element={<Integration />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/conseil" element={<Conseil />} />
+            <Route path="/partenariats" element={<Partenariats />} />
+            <Route path="/blog" element={<Blog />} />
         </Routes>
+        </Suspense>
       </motion.div>
     </AnimatePresence>
   );
 }
 
-function App() {
+export default function App() {
   const [loading, setLoading] = useState(true);
 
+  // ——— Loader initial court ———
   useEffect(() => {
     document.body.style.overflow = "hidden";
-
     const timer = setTimeout(() => {
       setLoading(false);
       document.body.style.overflow = "";
     }, 1500);
-
     return () => {
       clearTimeout(timer);
       document.body.style.overflow = "";
+    };
+  }, []);
+
+  // ——— Montage différé du fond 3D (après 1er paint / en idle) ———
+  const [showBg, setShowBg] = useState(false);
+  useEffect(() => {
+    const rIC =
+      (window as any).requestIdleCallback ||
+      ((cb: Function) => setTimeout(() => cb({ didTimeout: false }), 800));
+    const id = rIC(() => setShowBg(true));
+    return () => {
+      const cIC = (window as any).cancelIdleCallback || clearTimeout;
+      cIC(id);
     };
   }, []);
 
@@ -87,12 +85,16 @@ function App() {
   return (
     <Router>
       <div className="min-h-screen bg-[#080808] text-white overflow-hidden relative">
-        {/* Canvas en fond */}
-          <BackgroundCanvas />
+        {/* Fond 3D en lazy + idle */}
+        {showBg && (
+          <Suspense fallback={null}>
+            <BackgroundCanvas />
+          </Suspense>
+        )}
 
         {/* Contenu principal */}
         <div className="flex flex-col min-h-screen relative z-10 pt-24 main-wrapper">
-          <Header />
+          <BrandLink />
           <main className="flex-1 flex items-center justify-start px-24 overflow-hidden">
             <div className="w-full max-w-4xl">
               <AnimatedRoutes />
@@ -110,5 +112,3 @@ function App() {
     </Router>
   );
 }
-
-export default App;

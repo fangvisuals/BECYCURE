@@ -40,19 +40,59 @@ function centreAndFit(geometry, targetRadius = 1.0) {
 
 function buildMergedGeometryFromScene(scene) {
   const geoms = [];
+  let meshCount = 0;
+
   scene.updateMatrixWorld(true);
+
   scene.traverse((obj) => {
-    if (obj.isMesh && obj.geometry) {
-      const g = obj.geometry.clone();
+    // Mesh ou SkinnedMesh
+    if ((obj.isMesh || obj.isSkinnedMesh) && obj.geometry) {
+      meshCount++;
+
+      // 1) clone + world matrix
+      let g = obj.geometry.clone();
       g.applyMatrix4(obj.matrixWorld);
-      geoms.push(g);
+
+      // 2) forcer "positions only" et non indexé
+      if (g.index) g = g.toNonIndexed();
+
+      const pos = g.getAttribute("position");
+      if (!pos || !pos.array || pos.array.length < 9) {
+        g.dispose();
+        return;
+      }
+
+      // géométrie nue (positions uniquement)
+      const bare = new THREE.BufferGeometry();
+      bare.setAttribute(
+        "position",
+        new THREE.BufferAttribute(new Float32Array(pos.array), 3)
+      );
+
+      geoms.push(bare);
+      g.dispose();
     }
   });
+
+  if (meshCount === 0) {
+    console.warn("[ParticleMorph] Aucun Mesh dans le GLB — fallback sphère.");
+  }
+
   if (geoms.length === 0) return null;
+
   const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
   geoms.forEach((g) => g.dispose());
+
+  // Log utile : combien de sommets/triangles après merge
+  const pos = merged.getAttribute("position");
+  const tri = Math.floor(pos.count / 3);
+  console.log(
+    `[ParticleMorph] Merged geometry: ${pos.count} vertices (~${tri} triangles)`
+  );
+
   return merged;
 }
+
 
 function easeInOutCubic(t) {
   return t < 0.5
@@ -103,30 +143,77 @@ function jitterArray(array, amp) {
 }
 
 /* --------- target positions per model --------- */
-function useParticleTargets({ shapes, particleCount, dracoPath, fitRadius }) {
+function useParticleTargets({ shapes, activeId, particleCount, dracoPath, fitRadius }) {
   const [targets, setTargets] = React.useState(null); // Map id -> Float32Array
 
   React.useEffect(() => {
     let cancelled = false;
-    async function run() {
-      const entries = await Promise.all(
-        shapes.map(async (s) => {
-          const gltf = await loadGLTF(s.url, dracoPath);
-          const merged = buildMergedGeometryFromScene(gltf.scene);
-          if (!merged) return [s.id, createRandomSphere(particleCount, fitRadius * 0.8)];
+    let idleId = null;
+
+    // idle helper (JS pur, sans "as any")
+    const idle = (cb) => {
+      if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+        return window.requestIdleCallback(cb);
+      }
+      return setTimeout(cb, 400);
+    };
+    const cancelIdle = (id) => {
+      if (typeof window !== "undefined" && "cancelIdleCallback" in window) {
+        return window.cancelIdleCallback(id);
+      }
+      clearTimeout(id);
+    };
+
+    async function loadOneShape(s) {
+      try {
+        const gltf = await loadGLTF(s.url, dracoPath);
+        const merged = buildMergedGeometryFromScene(gltf.scene);
+        let pts;
+        if (!merged) {
+          pts = createRandomSphere(particleCount, fitRadius * 0.8);
+        } else {
           centreAndFit(merged, fitRadius);
-          const pts = samplePointsRandom(merged, particleCount);
+          pts = samplePointsRandom(merged, particleCount);
           merged.dispose();
-          return [s.id, pts];
-        })
-      );
-      if (!cancelled) setTargets(new Map(entries));
+        }
+        return [s.id, pts];
+      } catch (e) {
+        console.warn("GLB load failed:", s.url, e);
+        return [s.id, createRandomSphere(particleCount, fitRadius * 0.8)];
+      }
     }
-    run().catch(console.error);
+
+    (async () => {
+      const entries = new Map();
+
+      // 1) charge d’abord la forme active (ou la 1ère)
+      const active = shapes.find((s) => s.id === activeId) || shapes[0];
+      if (active) {
+        const pair = await loadOneShape(active);
+        if (!cancelled) {
+          entries.set(pair[0], pair[1]);
+          setTargets(new Map(entries));
+        }
+      }
+
+      // 2) en idle, charge les autres formes
+      idleId = idle(async () => {
+        for (const s of shapes) {
+          if (cancelled) return;
+          if (entries.has(s.id)) continue;
+          const pair = await loadOneShape(s);
+          if (cancelled) return;
+          entries.set(pair[0], pair[1]);
+          setTargets(new Map(entries));
+        }
+      });
+    })();
+
     return () => {
       cancelled = true;
+      if (idleId != null) cancelIdle(idleId);
     };
-  }, [JSON.stringify(shapes), particleCount, dracoPath, fitRadius]);
+  }, [JSON.stringify(shapes), activeId, particleCount, dracoPath, fitRadius]);
 
   return targets;
 }
@@ -381,7 +468,7 @@ export function ParticleMorphBackground({
   spin = { x: 0, y: 6, z: 0 },
   spinById,
 }) {
-  const targets = useParticleTargets({ shapes, particleCount, dracoPath, fitRadius });
+  const targets = useParticleTargets({ shapes, activeId, particleCount, dracoPath, fitRadius });
   const groupRef = React.useRef();
   const { camera, size: viewport } = useThree();
 

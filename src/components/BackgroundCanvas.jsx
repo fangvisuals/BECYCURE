@@ -4,8 +4,11 @@ import { Canvas } from "@react-three/fiber";
 import { RouteMorphBackground } from "./ParticleMorphScene.jsx";
 
 export default function BackgroundCanvas() {
+  console.log("[BG] BackgroundCanvas chargé depuis:", import.meta.url);
+
   const BASE = import.meta.env.BASE_URL || "/";
 
+  // ✅ NOMS DE FICHIERS RÉELS
   const shapes = useMemo(
     () => [
       { id: "home",         url: `${BASE}models/becycure.glb` },
@@ -16,6 +19,7 @@ export default function BackgroundCanvas() {
     [BASE]
   );
 
+  // HashRouter: pathname est la partie après "#/"
   const routeMap = (pathname, hash) => {
     const p = (pathname || "/").replace(/\/+$/, "");
     if (hash === "#xdr") return "services";
@@ -27,27 +31,14 @@ export default function BackgroundCanvas() {
     return "home";
   };
 
-  // --- NEW: clé responsive pour resynchroniser la pose pendant le morph au resize
-  const getBpKey = () => {
-    const w = typeof window !== "undefined" ? window.innerWidth : 1920;
-    if (w <= 560)  return "w-560";
-    if (w <= 768)  return "w-768";
-    if (w <= 1024) return "w-1024";
-    if (w <= 1280) return "w-1280";
-    return "w-large";
-  };
-  const [layoutKey, setLayoutKey] = useState(getBpKey);
+  // petit ramp-up pour éviter un pic de charge au boot
+  const [count, setCount] = useState(7000);
   useEffect(() => {
-    let raf = 0;
-    const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => setLayoutKey(getBpKey()));
-    };
-    window.addEventListener("resize", onResize);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", onResize);
-    };
+    const id = (window.requestIdleCallback
+      ? window.requestIdleCallback(() => setCount(9000))
+      : setTimeout(() => setCount(9000), 800)
+    );
+    return () => (window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id));
   }, []);
 
   return (
@@ -63,12 +54,9 @@ export default function BackgroundCanvas() {
             shapes={shapes}
             routeMap={routeMap}
 
-            /* --- responsive live key (nouveau) --- */
-            layoutKey={layoutKey}
-
-            /* visuel */
-            particleCount={9000}
-            size={22}
+            /* visuel et perfs */
+            particleCount={count}
+            size={30}
             speed={0.6}
             colorA="rgba(75, 255, 225, 1)"
             colorB="rgba(53, 255, 104, 1)"
@@ -82,35 +70,15 @@ export default function BackgroundCanvas() {
             scale={1.0}
             depth={0}
 
-            /* poses cibles par page */
+            /* poses par page */
             transformById={{
-              home: {
-                anchor:   { x: 0.70, y: 0.5, mode: "relative" },
-                rotation: [0, 0, 0],
-                scale:    1.0,
-                depth:    2.5,
-              },
-              services: {
-                anchor:   { x: 0.70, y: 0.52, mode: "relative" },
-                rotation: [0, 22, 0],
-                scale:    1.15,
-                depth:    1,
-              },
-              blog: {
-                anchor:   { x: 0.63, y: 0.58, mode: "relative" },
-                rotation: [-5, 35, 0],
-                scale:    1.1,
-                depth:    0,
-              },
-              partenariats: {
-                anchor:   { x: 0.50, y: 0.52, mode: "relative" },
-                rotation: [0, 0, 0],
-                scale:    1.0,
-                depth:    1,
-              },
+              home:        { anchor:{ x: 0.70, y: 0.50, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:2.5 },
+              services:    { anchor:{ x: 0.75, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.15, depth:1   },
+              blog:        { anchor:{ x: 0.63, y: 0.58, mode:"relative" }, rotation:[-5,35,0],  scale:1.1,  depth:0   },
+              partenariats:{ anchor:{ x: 0.50, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:1   },
             }}
 
-            /* responsive (breakpoints) */
+            /* responsive */
             responsive={[
               { max: 1280, anchor: { x: 0.66, y: 0.54 }, scale: 1.1 },
               { max: 1024, anchor: { x: 0.58, y: 0.56 }, scale: 0.95 },
@@ -118,14 +86,16 @@ export default function BackgroundCanvas() {
               { max: 560,  anchor: { x: 0.50, y: 0.62 }, scale: 0.70, rotation: [0, 6, 0] },
             ]}
 
-            /* spin continu */
+            /* rotation continue */
             spin={{ x: 0, y: 8, z: 0 }}
             spinById={{
-              services: { y: -6 },
+              services: { y: 0 },
               blog:     { y: -6 },
             }}
 
-            remorphOnSameId={false}       // évite un “remorph” inutile au resize
+            /* force un morph même si deux routes mappent au même id */
+            remorphOnSameId={true}
+
             dracoPath={`${BASE}draco/`}
           />
         </Suspense>

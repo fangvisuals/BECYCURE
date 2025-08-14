@@ -4,6 +4,14 @@ body {
   height: 100%;
 }
 
+@font-face{
+  font-family:"Space Grotesk Var";
+  src:url("/fonts/space-grotesk/space-grotesk-var.woff2") format("woff2-variations");
+  font-weight:300 700; /* adapte la plage si besoin */
+  font-style:normal;
+  font-display:swap;
+}
+
 /* Empêche le contenu d'intercepter les clics */
 .main-wrapper {
   pointer-events: none;
