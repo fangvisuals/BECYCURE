@@ -26,16 +26,42 @@ export const postType = defineType({
       validation: (rule) => rule.required(),
     }),
     defineField({
+      name: 'author',
+      title: 'Auteur',
+      type: 'reference',
+      to: [{ type: 'author' }],
+    }),
+    defineField({
       name: 'image',
       title: 'Image',
       type: 'image',
       options: { hotspot: true },
     }),
     defineField({
-      name: 'body',
-      title: 'Body',
-      type: 'array',
-      of: [{ type: 'block' }],
-    }),
+        name: 'body',
+        type: 'array',
+        of: [
+          { type: 'block',
+            lists: [
+              { title: 'Bullet', value: 'bullet' },
+              { title: 'Numbered', value: 'number' },
+              { title: 'Check', value: 'check' },
+              { title: 'Quote', value: 'quote' },
+              { title: 'Code', value: 'code' },
+              { title: 'Inline Code', value: 'inlineCode' },
+              { title: 'Image', value: 'image' },
+            ],
+           },
+          {
+            type: 'image',
+            fields: [
+              { name: 'alt', type: 'string', title: 'Alt' },
+              { name: 'caption', type: 'string', title: 'Caption' },
+            ],
+            options: { hotspot: true },
+          },
+
+        ],
+      }),
   ],
 })

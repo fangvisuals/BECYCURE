@@ -2,14 +2,58 @@
 import React from "react";
 import { useParams, Link } from "react-router-dom";
 import { PortableText } from "@portabletext/react";
-import BackButton from "@/components/BackButton.jsx";
-import Panel from "@/components/Panel.jsx";
 import { sanity } from "@/sanity/client";
 import { urlFor } from "@/sanity/image";
+import BackButton from "@/components/BackButton.jsx";
+import Panel from "@/components/Panel.jsx";
+import PageContainer from "@/components/layout/PageContainer.jsx";
 
+// Fetch the post + author (name + image)
 const POST_QUERY = `*[_type == "post" && slug.current == $slug][0]{
-  _id, title, slug, publishedAt, image, body
+  _id,
+  title,
+  slug,
+  publishedAt,
+  image,
+  body,
+  author->{_id, name, image}
 }`;
+
+const ptComponents = {
+  list: {
+    bullet: ({ children }) => (
+      <ul className="my-6 list-disc pl-6 space-y-2">{children}</ul>
+    ),
+    number: ({ children }) => (
+      <ol className="my-6 list-decimal pl-6 space-y-2">{children}</ol>
+    ),
+  },
+  listItem: {
+    bullet: ({ children }) => <li className="marker:text-white/60">{children}</li>,
+    number: ({ children }) => <li className="marker:text-white/60">{children}</li>,
+  },
+  block: {
+    h2: ({ children }) => (
+      <h2 className="mt-10 mb-4 text-2xl md:text-3xl font-semibold">{children}</h2>
+    ),
+    h3: ({ children }) => (
+      <h3 className="mt-8 mb-3 text-xl md:text-2xl font-semibold">{children}</h3>
+    ),
+    normal: ({ children }) => <p className="leading-relaxed">{children}</p>,
+  },
+  marks: {
+    link: ({ value, children }) => (
+      <a
+        href={value?.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:opacity-80"
+      >
+        {children}
+      </a>
+    ),
+  },
+};
 
 export default function BlogPost() {
   const { slug } = useParams();
@@ -18,147 +62,160 @@ export default function BlogPost() {
   const [err, setErr] = React.useState(null);
 
   React.useEffect(() => {
-    let mounted = true;
-    setLoading(true);
+    let cancelled = false;
     sanity
       .fetch(POST_QUERY, { slug })
-      .then((data) => mounted && setPost(data))
-      .catch((e) => mounted && setErr(e))
-      .finally(() => mounted && setLoading(false));
+      .then((data) => !cancelled && setPost(data))
+      .catch((e) => !cancelled && setErr(e))
+      .finally(() => !cancelled && setLoading(false));
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, [slug]);
 
   if (loading) return <div className="text-white/80 p-6">Chargement…</div>;
-  if (err) return <div className="text-red-400 p-6">Erreur : {String(err)}</div>;
+  if (err) return <div className="text-red-400 p-6">Erreur: {String(err)}</div>;
   if (!post) return <div className="text-white/80 p-6">Article introuvable.</div>;
 
-  const hero =
+  const cover =
     post.image &&
-    urlFor(post.image)?.width(1600).height(900).fit("crop").auto("format").url();
+    urlFor(post.image).width(1280).height(720).fit("crop").url();
 
-  /** Mapping Portable Text → React (mise en forme Tailwind) */
+  const authorAvatar =
+    post.author?.image &&
+    urlFor(post.author.image).width(80).height(80).fit("crop").url();
+
+  const published = post.publishedAt
+    ? new Date(post.publishedAt).toLocaleDateString("fr-FR")
+    : "";
+
+  // Portable Text custom renderers (optional: fine tune headings/images/links)
   const components = {
+    block: {
+      h2: ({ children }) => (
+        <h2 className="font-space-grotesk text-green-500 text-2xl sm:text-[1.65rem] lg:text-3xl font-semibold mt-8 mb-3">
+          {children}
+        </h2>
+      ),
+      h3: ({ children }) => (
+        <h3 className="font-space-grotesk text-green-400 text-xl sm:text-2xl font-semibold mt-6 mb-2">
+          {children}
+        </h3>
+      ),
+      normal: ({ children }) => <p className="leading-relaxed">{children}</p>,
+    },
     types: {
       image: ({ value }) => {
-        const src = urlFor(value)?.width(1400).fit("max").auto("format").url();
+        const src = value?.asset ? urlFor(value).width(1280).url() : null;
         if (!src) return null;
-        const alt = value?.alt || post.title || "Illustration";
         return (
           <figure className="my-6">
             <img
               src={src}
-              alt={alt}
-              className="w-full rounded-xl object-cover"
+              alt={value?.alt || ""}
+              className="rounded-xl w-full object-cover"
               loading="lazy"
               decoding="async"
             />
-            {value?.caption && (
-              <figcaption className="mt-2 text-sm text-white/60">{value.caption}</figcaption>
-            )}
+            {value?.alt ? (
+              <figcaption className="mt-2 text-sm text-white/60">
+                {value.alt}
+              </figcaption>
+            ) : null}
           </figure>
         );
       },
     },
-    block: {
-      h1: ({ children }) => (
-        <h2 className="mt-8 mb-3 text-3xl md:text-4xl font-semibold leading-tight">{children}</h2>
-      ),
-      h2: ({ children }) => (
-        <h3 className="mt-8 mb-3 text-2xl md:text-3xl font-semibold leading-snug">{children}</h3>
-      ),
-      h3: ({ children }) => (
-        <h4 className="mt-6 mb-2 text-xl md:text-2xl font-semibold leading-snug">{children}</h4>
-      ),
-      h4: ({ children }) => (
-        <h5 className="mt-5 mb-2 text-lg md:text-xl font-semibold leading-snug">{children}</h5>
-      ),
-      normal: ({ children }) => (
-        <p className="my-4 text-base md:text-lg leading-relaxed text-white/90">{children}</p>
-      ),
-      blockquote: ({ children }) => (
-        <blockquote className="my-6 border-l-4 border-white/20 pl-4 md:pl-6 italic text-white/90">
-          {children}
-        </blockquote>
-      ),
-    },
-    list: {
-      bullet: ({ children }) => (
-        <ul className="my-4 ml-5 list-disc space-y-2 text-white/90">{children}</ul>
-      ),
-      number: ({ children }) => (
-        <ol className="my-4 ml-5 list-decimal space-y-2 text-white/90">{children}</ol>
-      ),
-    },
     marks: {
       link: ({ value, children }) => {
         const href = value?.href || "#";
-        const isExternal = /^https?:\/\//i.test(href);
+        const isExt = /^https?:\/\//i.test(href);
         return (
           <a
             href={href}
-            target={isExternal ? "_blank" : undefined}
-            rel={isExternal ? "noopener noreferrer" : undefined}
-            className="text-green-400 hover:text-green-300 underline decoration-dotted underline-offset-4"
+            target={isExt ? "_blank" : undefined}
+            rel={isExt ? "noopener noreferrer" : undefined}
           >
             {children}
           </a>
         );
       },
-      strong: ({ children }) => <strong className="font-semibold text-white">{children}</strong>,
-      em: ({ children }) => <em className="italic text-white/90">{children}</em>,
-      code: ({ children }) => (
-        <code className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[0.95em]">
-          {children}
-        </code>
-      ),
     },
   };
 
   return (
-    <main className="relative z-10 mx-auto w-full max-w-4xl px-4 sm:px-6 md:px-8 py-8 md:py-10">
-      <BackButton className="mb-4" />
+    <PageContainer
+      as="section"
+      centerY={false}                 // allow full-page scrolling
+      maxW="max-w-[min(94vw,1000px)]"
+      px="px-5 sm:px-6 md:px-8"
+      py="py-8 sm:py-10 md:py-12 lg:py-16"
+      className="text-white"
+    >
+      {/* Force Back to home (not history back) */}
+      <BackButton className="mb-3" to="/blog" title="Retour aux articles" />
 
-      <Panel className="p-4 sm:p-6 md:p-8">
-        {/* Hero */}
-        {hero && (
+      <Panel className="p-8 sm:p-6 md:p-10 lg:p-10" >
+        {/* Hero image */}
+        {cover && (
           <img
-            src={hero}
+            src={cover}
             alt={post.title}
-            className="w-full rounded-xl aspect-video object-cover mb-6"
+            className="w-full aspect-video rounded-xl object-cover mb-6"
           />
         )}
 
-        {/* Titre + méta */}
+        {/* Title */}
         <header className="mb-4">
-          <h1 className="text-3xl md:text-4xl font-bold leading-tight font-inter text-white">
+          <h1 className="title leading-tight text-3xl sm:text-4xl lg:text-5xl">
             {post.title}
           </h1>
-          <p className="text-sm md:text-base text-white/60 mt-2">
-            Publié le {new Date(post.publishedAt).toLocaleDateString("fr-FR")}
-          </p>
+
+          {/* Meta: author + date */}
+          <div className="mt-3 flex items-center gap-3 text-white/70">
+            {authorAvatar && (
+              <img
+                src={authorAvatar}
+                alt={post.author?.name || "Auteur"}
+                className="w-9 h-9 rounded-full object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+            <div className="text-sm">
+              {post.author?.name && (
+                <div className="font-medium text-white/90">
+                  {post.author.name}
+                </div>
+              )}
+              {published && <div>Publié le {published}</div>}
+            </div>
+          </div>
         </header>
 
-        {/* Corps de l’article */}
-        <article className="font-inter text-white">
+        {/* Body */}
+        <article
+          className="
+            prose prose-invert max-w-none
+            prose-headings:font-space-grotesk
+            prose-h2:scroll-mt-24 prose-h3:scroll-mt-24
+            prose-p:text-white/90 prose-a:text-green-400 hover:prose-a:text-green-300
+            prose-strong:text-white prose-em:text-white
+            prose-li:marker:text-white/60 max-w-none
+            prose-img:rounded-xl
+            prose-ul:list-disc 
+            prose-ol:list-decimal
+          "
+        >
           {Array.isArray(post.body) ? (
             <PortableText value={post.body} components={components} />
           ) : (
-            <p className="text-white/80">Aucun contenu.</p>
+            <p className="text-white/70">
+              (Aucun contenu pour cet article.)
+            </p>
           )}
         </article>
-
-        {/* Navigation retour */}
-        <div className="mt-8">
-          <Link
-            to="/blog"
-            className="text-green-400 hover:text-green-300 underline decoration-dotted underline-offset-4"
-          >
-            ← Retour aux articles
-          </Link>
-        </div>
       </Panel>
-    </main>
+    </PageContainer>
   );
 }

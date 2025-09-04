@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 import ScrambleLink from "../components/ScrambleLink.jsx"
 
 export default function BrandLink() {
-  const BASE = import.meta.env.BASE_URL || "/"; // ex: "/BECYCURE/"
-  const logoUrl = `${BASE}logo-nav.svg`;        // mets le fichier dans /public/logo-nav.svg
+  const BASE = import.meta.env.BASE_URL || "/";
+  const logoUrl = `${BASE}logo-nav.svg`;        
 
   return (
     <header className="fixed top-0 left-0 p-8 z-20">
@@ -13,9 +13,9 @@ export default function BrandLink() {
         as="span"
         text={"BECYCURE"}
         trigger="hover"
-        duration={1200}
-        cyclesPerLetter={8}
-        shuffleMs={70}
+        duration={800}
+        cyclesPerLetter={2}
+        shuffleMs={30}
         respectMotion={false}
         >
         {/* Logo */}

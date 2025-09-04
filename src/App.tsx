@@ -8,7 +8,7 @@ import BackButton from "./components/BackButton";
 import Loader from "./components/Loader.jsx";
 
 
-// 🔻 lazy split : le fond 3D (three + r3f + loaders) sort du bundle principal
+// 🔻 lazy split : le fond 3D (three + r3f + loaders)
 const BackgroundCanvas = lazy(() => import("./components/BackgroundCanvas.jsx"));
 
 // ——— Pages ———
@@ -56,7 +56,7 @@ export default function App() {
 
   // ——— Loader initial court ———
   useEffect(() => {
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = "";
     const timer = setTimeout(() => {
       setLoading(false);
       document.body.style.overflow = "";
@@ -90,7 +90,7 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#080808] text-white overflow-hidden relative">
+      <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden relative">
         {/* Fond 3D en lazy + idle */}
         {showBg && (
           <Suspense fallback={null}>
@@ -99,11 +99,11 @@ export default function App() {
         )}
 
         {/* Contenu principal */}
-        <div className="flex flex-col min-h-screen relative z-10 pt-24 main-wrapper">
+        <div className="flex flex-col min-h-screen relative pt-24 z-10 main-wrapper ml-15">
           <BrandLink />
-          <main className="flex-1 flex items-center justify-start
+          <main className="flex-1 flex items-start justify-start
                   px-4 sm:px-6 md:px-10 lg:px-24
-                  overflow-hidden">
+                  overflow-y-auto">
             <div className="w-full max-w-4xl">
               <AnimatedRoutes />
             </div>

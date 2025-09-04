@@ -246,14 +246,14 @@ export default function FaultyTerminal({
 
   // look
   scale = 2.0,
-  gridMul = [4, 2],
+  gridMul = [5, 3],
   digitSize = 2.5,
-  timeScale = 1,
+  timeScale = 3.0,
   pause = false,
   scanlineIntensity = 0.15,
   glitchAmount = 0.5,
   flickerAmount = 0.3,
-  noiseAmp = 1,
+  noiseAmp = 5.0,
   chromaticAberration = 0.1,
   dither = 0,
   curvature = 0.2,

@@ -6,21 +6,23 @@ import BackButton from '../components/BackButton.jsx'
 import GradientText from '../components/GradientText.jsx'
 import ScrambleText from '../components/Scramble.jsx'
 import Panel from '../components/Panel.jsx';
+import PageContainer from '../components/layout/PageContainer.jsx';
 
 export default function Integration() {
   return (
-    <div className="min-h-screen text-white relative overflow-hidden">
+    <PageContainer>
+    <div className="min-h-screen text-white relative overflow-x-hidden">
       {/* Fond animé avec couleur spécifique */}
 
       {/* Contenu principal */}
-      <div className="relative z-10 px-8 py-20 max-w-5xl ml-0">
+      
+      <div className="relative z-10 max-w-5xl">
         <BackButton strokeClass='stroke-blue-300' className="mb-4" />
-        <h1 className="title leading-tight">
-            {/* Ligne 1 : L'IA (gradient animé) + POUR ÉCLAIRER (blanc) */}
+        <h1 className="title text-[9.5vw] sm:text-6xl lg:text-7xl leading-[1.05] mb-8">
             <span className="block">
               <span className="inline-flex items-baseline gap-x-2 md:gap-x-3">
                 <GradientText
-                  colors={["#4340ffff", "#81cefaff", "#4093ffff", "#4093ffff", "#4340ffff"]}
+                  colors={["#40ffaa", "#81fa9fff", "#40ffd6ff", "#40ffafff", "#40ffaa"]}
                   animationSpeed={3}
                 >
                   <ScrambleText
@@ -39,7 +41,7 @@ export default function Integration() {
         </h1>
 
         <Panel border='ring-1 ring-sky-500/10'>
-        <p className="text-lg leading-relaxed text-gray-200 mb-6 pt-6">
+        <p className="text-lg leading-relaxed text-gray-200 mb-6 pt-4">
           <span className='font-bold font-inter'>BECYCURE</span> vous accompagne dans l'intégration de vos solutions de cybersécurité avec une approche modulaire, progressive et totalement adaptée à vos contraintes SI.
         </p>
 
@@ -61,5 +63,6 @@ export default function Integration() {
         </Panel>
       </div>
     </div>
+    </PageContainer>
   );
 }

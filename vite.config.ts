@@ -3,8 +3,11 @@ import react from "@vitejs/plugin-react";
 import glsl from "vite-plugin-glsl";
 import { fileURLToPath, URL } from "node:url";
 
+const isCI = process.env.CI === 'true'
+const isGhPages = process.env.DEPLOY_TARGET === 'gh-pages'
+
 export default defineConfig({
-  base: "/BECYCURE/",
+  base: isCI && isGhPages ? "/BECYCURE/" : "/",
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),

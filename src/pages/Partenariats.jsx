@@ -85,7 +85,7 @@ export default function Partenariats() {
   ];
 
   return (
-    <div className="min-h-screen text-white relative overflow-hidden">
+    <div className="min-h-screen text-white relative overflow-x-hidden">
       {/* En-tête (conteneur étroit) */}
       <div className="relative z-10 px-6 md:px-10 pt-10 md:pt-16  mx-auto">
         <BackButton className="mb-4" />

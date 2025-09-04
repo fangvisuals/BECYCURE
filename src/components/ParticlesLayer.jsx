@@ -46,8 +46,8 @@ export default function ParticlesLayer() {
         const ctx = gl.getContext?.();
         if (ctx && ctx.DITHER) ctx.disable(ctx.DITHER);
       }}
-      // pas de background ici -> Faulty Terminal reste visible derrière
     >
+
       <Suspense fallback={null}>
         <RouteMorphBackground
           shapes={shapes}
@@ -56,7 +56,7 @@ export default function ParticlesLayer() {
           particleCount={count}
           size={30}
           speed={0.6}
-          colorA="rgba(124, 255, 163, 1)"
+          colorA="rgba(194, 12, 211, 1)"
           colorB="rgba(147, 255, 201, 1)"
           sparkle={{ strength: 0.9, speed: 2 }}
           glow={{ intensity: 0.7, core: 0.2, falloff: 0.4, mixToWhite: 0.65, autoIntensity: 0.6 }}
@@ -82,7 +82,9 @@ export default function ParticlesLayer() {
           ]}
           /* rotation continue */
           spin={{ x: 0, y: 6, z: 0 }}
-          spinById={{}}
+          spinById={{
+            services: { x: 0, y: 6, z: 0 },
+          }}
           /* autoriser remorph même si ID identique */
           remorphOnSameId={true}
           dracoPath={`${BASE}draco/`}

@@ -257,7 +257,7 @@ function Particles({
   size,
   speed,
   colorA = "#60a5fa",
-  colorB = "#a78bfa",
+  colorB = "#ff0000ff",
   colorMix = 0.6, // NEW: mix 0..1 (0=A, 1=B)
   morphKey,
   onProgress,

@@ -12,7 +12,7 @@ export default function BackgroundCanvas() {
     () => [
       { id: "home",         url: `${BASE}models/becycure.glb` },
       { id: "services",     url: `${BASE}models/soc.glb` },
-      { id: "blog",         url: `${BASE}models/blog.glb` },
+      { id: "blog",         url: `${BASE}models/becycure.glb` },
       { id: "partenariats", url: `${BASE}models/partenariats.glb` },
     ],
     [BASE]
@@ -52,7 +52,7 @@ export default function BackgroundCanvas() {
           scale={2.0}
           gridMul={[4, 2]}
           digitSize={3}
-          timeScale={1}
+          timeScale={0.5}
           pause={false}
           scanlineIntensity={0.15}
           glitchAmount={0.5}
@@ -61,8 +61,8 @@ export default function BackgroundCanvas() {
           chromaticAberration={0}
           dither={0}
           curvature={0.1}
-          tint="#166427"
-          pageLoadAnimation={false}
+          tint="#092e11"
+          pageLoadAnimation={true}
           brightness={1}
         />
       </div>
@@ -91,8 +91,6 @@ export default function BackgroundCanvas() {
             particleCount={count}
             size={30}
             speed={0.6}
-            colorA="rgba(124, 255, 163, 1)"
-            colorB="rgba(147, 255, 201, 1)"
             sparkle={{ strength: 0.9, speed: 2 }}
             glow={{ intensity: 0.7, core: 0.2, falloff: 0.4, mixToWhite: 0.65, autoIntensity: 0.6 }}
             quality="auto"
@@ -107,7 +105,7 @@ export default function BackgroundCanvas() {
             transformById={{
               home:        { anchor:{ x: 0.70, y: 0.50, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:2.5 },
               services:    { anchor:{ x: 0.75, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.15, depth:1   },
-              blog:        { anchor:{ x: 0.63, y: 0.58, mode:"relative" }, rotation:[-5,35,0],  scale:1.1,  depth:0   },
+              blog:        { anchor:{ x: 0.73, y: 0.52, mode:"relative" }, rotation:[0, 0 ,0],  scale:1.1,  depth:0   },
               partenariats:{ anchor:{ x: 0.73, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:1   },
             }}
 
@@ -121,7 +119,11 @@ export default function BackgroundCanvas() {
 
             /* rotation continue */
             spin={{ x: 0, y: 6, z: 0 }}
-            spinById={{}}
+
+            /* rotation continue par page */
+            spinById={{
+              
+            }}
 
             /* autoriser un morph même si l’ID ne change pas (routes partageant un id) */
             remorphOnSameId={true}

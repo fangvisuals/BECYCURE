@@ -12,7 +12,7 @@ export default function Home() {
     { path: "/services", label: "/SERVICES MANAGÉS" },
     { path: "/conseil", label: "/CONSEIL" },
     { path: "/partenariats", label: "/PARTENARIATS" },
-    { path: "/blog", label: "/ACTUALITÉS" },
+    { path: "/blog", label: "/ACTUALITÉS" }
   ];
 
   const externalLinks = [
@@ -23,22 +23,20 @@ export default function Home() {
   return (
     <PageContainer
       as="section"
-      centerY
-      maxW="max-w-[min(94vw,1200px)] xl:max-w-[1200px]"
       px="px-5 sm:px-6 md:px-8 lg:px-12"
-      py="py-10 sm:py-12 md:py-16"
-      className="space-y-8"
+      py="py-0"
+      className="space-y-8 pt-[16vh] md:pt-[20vh]"
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: "easeOut" }}
-        className="w-full max-w-4xl ml-0 mr-auto md:mx-auto
+        className="w-full max-w-6xl ml-0 mr-auto md:mx-auto
         px-4 sm:px-6 space-y-8 flex flex-col justify-center"
       >
         {/* Titre */}
         <div className="space-y-2">
-          <h1 className="title text-[9.5vw] sm:text-6xl lg:text-7xl leading-[1.05]">
+          <h1 className="title text-[9.5vw] text-balance sm:text-6xl lg:text-7xl leading-[1.05]">
             {/* Ligne 1 : L'IA (gradient animé) + POUR ÉCLAIRER (blanc) */}
             <span className="block">
               <span className="inline-flex items-baseline flex-wrap gap-x-0 sm:gap-x-3 whitespace-nowrap">
@@ -110,58 +108,50 @@ export default function Home() {
         </div>
 
         {/* Sous-texte + liens */}
-        <div className="font-mono text-sm space-y-1 text-gray-300 mt-8">
-          <div className="text-green-400">
-            <ScrambleText
-              as="span"
-              text={"BIENVENUE CHEZ "}
-              trigger="mount"
-              duration={1000}
-              cyclesPerLetter={8}
-              shuffleMs={70}
-              respectMotion={false}
-              className="gradient-text"
-            />
-            <span className="font-inter font-bold">
-              <ScrambleText
-                as="span"
-                text={"BECYCURE"}
-                trigger="mount"
-                duration={1000}
-                cyclesPerLetter={8}
-                shuffleMs={70}
-                respectMotion={false}
-                className="gradient-text"
-              />
-            </span>
-          </div>
+<div className="font-mono text-base space-y-1 text-gray-300 mt-8">
 
-          <div className="mt-4 space-y-1">
-            <ScrambleText
-              as="span"
-              text={"NOTRE MISSION EST DE PROTÉGER ET SÉCURISER "}
-              trigger="mount"
-              duration={1200}
-              cyclesPerLetter={8}
-              shuffleMs={70}
-              respectMotion={false}
-            />
-          </div>
+  <div className="space-y-1 text-lg font-bold">
+    {/* wrapper qui borne la largeur + force le wrap pour tout le contenu enfant */}
+    <div className="max-w-[30ch] sm:max-w-[56ch] md:max-w-[56ch] [&_*]:whitespace-normal">
+      <ScrambleText
+        as="p"
+        text={"NOTRE MISSION EST DE PROTÉGER ET SÉCURISER "}
+        trigger="view"
+        duration={1200}
+        cyclesPerLetter={8}
+        shuffleMs={70}
+        respectMotion={false}
+        reserveWidth={false}               // <- IMPORTANT: autorise le wrap
+        className="
+          block leading-relaxed text-pretty break-words
+          [hyphens:auto] tracking-tight
+        "
+      />
+    </div>
+  </div>
 
-          <div className="mt-4 space-y-1">
-            <ScrambleText
-              as="span"
-              text={"LES INFRASTRUCTURES NUMÉRIQUES"}
-              trigger="view"
-              duration={1200}
-              cyclesPerLetter={8}
-              shuffleMs={70}
-              respectMotion={false}
-            />
-          </div>
+  <div className="mt-4 space-y-1 text-lg font-bold">
+    <div className="max-w-[30ch] sm:max-w-[40ch] md:max-w-[56ch] [&_*]:whitespace-normal">
+      <ScrambleText
+        as="p"
+        text={"LES INFRASTRUCTURES NUMÉRIQUES"}
+        trigger="view"
+        duration={1200}
+        cyclesPerLetter={8}
+        shuffleMs={70}
+        respectMotion={false}
+        reserveWidth={false}               // <- IMPORTANT aussi ici
+        className="
+          block leading-relaxed text-pretty break-words
+          [hyphens:auto] tracking-tight
+        "
+      />
+    </div>
+  </div>
+          
 
           {/* Liens internes */}
-          <div className="mt-6 space-y-1 flex flex-col items-start">
+          <div className="mt-4 space-y-1 flex flex-col items-start">
             {internalLinks.map(({ path, label }) => (
               <ScrambleLink
                 key={path}
