@@ -11,12 +11,11 @@ export default defineConfig({
     },
   },
   plugins: [
-    react(),
     glsl({
-      include: ["**/*.glsl", "**/*.vert", "**/*.frag"], // tes shaders
-      exclude: [/node_modules/],
+      include: ["**/*.glsl", '**/*.wgsl', '**/*.vert', "**/*.frag"], // tes shaders
       warnDuplicatedImports: false,
     }),
+    react(),
   ],
   build: {
     target: "es2022",

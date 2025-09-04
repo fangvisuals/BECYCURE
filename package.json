@@ -13,16 +13,22 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@portabletext/react": "^4.0.1",
     "@react-three/drei": "^9.122.0",
     "@react-three/fiber": "^8.18.0",
+    "@sanity/client": "^7.9.0",
+    "@sanity/image-url": "^1.1.0",
+    "@sanity/vision": "^4.5.0",
     "framer-motion": "^12.23.6",
     "gsap": "^3.13.0",
     "leva": "^0.10.0",
     "lil-gui": "^0.20.0",
     "lucide-react": "^0.348.0",
+    "ogl": "^1.0.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.7.0",
+    "sanity": "^4.5.0",
     "styled-components": "^6.1.19",
     "three": "^0.178.0",
     "vite-plugin-glsl": "^1.5.1"

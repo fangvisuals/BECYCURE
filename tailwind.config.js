@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  content: ['./index.html','./src/**/*.{js,ts,jsx,tsx}'],
   darkMode: "class", // optionnel mais recommandé
   content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
   safelist: [
@@ -28,7 +29,7 @@ export default {
     extend: {
       fontFamily: {
         "space-grotesk": ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
-        inter: ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
+        "inter": ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],
       },
       backgroundImage: {
         "techno-gradient": "linear-gradient(90deg, #0ff 0%, #a259ff 50%, #0ff 100%)",
@@ -38,15 +39,16 @@ export default {
           "0%, 100%": { opacity: "1" },
           "50%": { opacity: "0" },
         },
-        "gradient-move": {
-          "0%, 100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
+        gradient: {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
         },
       },
       animation: {
         blink: "blink 0.5s infinite",
         fade: "blink 3s infinite",
-        "gradient-move": "gradient-move 2s linear infinite",
+        gradient: "gradient 8s linear infinite",
       },
     },
   },

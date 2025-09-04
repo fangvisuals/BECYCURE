@@ -8,9 +8,9 @@ import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { MeshSurfaceSampler } from "three/examples/jsm/math/MeshSurfaceSampler.js";
 import * as BufferGeometryUtils from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
-// Shaders (avec vite-plugin-glsl)
-import vertexShader from "../shaders/particles/vertex.glsl";
-import fragmentShader from "../shaders/particles/fragment.glsl";
+// Shaders (vite-plugin-glsl)
+import vertexShader from "@/shaders/particles/vertex.glsl";
+import fragmentShader from "@/shaders/particles/fragment.glsl";
 
 /* ----------------- helpers ----------------- */
 async function loadGLTF(url, dracoPath) {
@@ -45,15 +45,12 @@ function buildMergedGeometryFromScene(scene) {
   scene.updateMatrixWorld(true);
 
   scene.traverse((obj) => {
-    // Mesh ou SkinnedMesh
     if ((obj.isMesh || obj.isSkinnedMesh) && obj.geometry) {
       meshCount++;
 
-      // 1) clone + world matrix
       let g = obj.geometry.clone();
       g.applyMatrix4(obj.matrixWorld);
 
-      // 2) forcer "positions only" et non indexé
       if (g.index) g = g.toNonIndexed();
 
       const pos = g.getAttribute("position");
@@ -62,7 +59,6 @@ function buildMergedGeometryFromScene(scene) {
         return;
       }
 
-      // géométrie nue (positions uniquement)
       const bare = new THREE.BufferGeometry();
       bare.setAttribute(
         "position",
@@ -83,7 +79,6 @@ function buildMergedGeometryFromScene(scene) {
   const merged = BufferGeometryUtils.mergeGeometries(geoms, false);
   geoms.forEach((g) => g.dispose());
 
-  // Log utile : combien de sommets/triangles après merge
   const pos = merged.getAttribute("position");
   const tri = Math.floor(pos.count / 3);
   console.log(
@@ -93,11 +88,8 @@ function buildMergedGeometryFromScene(scene) {
   return merged;
 }
 
-
 function easeInOutCubic(t) {
-  return t < 0.5
-    ? 4 * t * t * t
-    : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 function samplePointsRandom(geometry, count) {
@@ -150,7 +142,6 @@ function useParticleTargets({ shapes, activeId, particleCount, dracoPath, fitRad
     let cancelled = false;
     let idleId = null;
 
-    // idle helper (JS pur, sans "as any")
     const idle = (cb) => {
       if (typeof window !== "undefined" && "requestIdleCallback" in window) {
         return window.requestIdleCallback(cb);
@@ -267,6 +258,7 @@ function Particles({
   speed,
   colorA = "#60a5fa",
   colorB = "#a78bfa",
+  colorMix = 0.6, // NEW: mix 0..1 (0=A, 1=B)
   morphKey,
   onProgress,
   remorphOnSameId = true,
@@ -279,7 +271,6 @@ function Particles({
   const progressRef = React.useRef(1);
   const { size: viewport } = useThree();
 
-  // aire de référence (premier rendu) pour compenser la luminosité
   const baseAreaRef = React.useRef(null);
   React.useEffect(() => {
     if (baseAreaRef.current == null) {
@@ -287,7 +278,6 @@ function Particles({
     }
   }, [viewport.width, viewport.height]);
 
-  // init attributes
   React.useLayoutEffect(() => {
     const geo = geometryRef.current;
     if (!geo) return;
@@ -319,14 +309,12 @@ function Particles({
   const prevIdRef = React.useRef(activeId);
   const prevKeyRef = React.useRef(morphKey);
 
-  // morph when activeId or page key changes
   React.useEffect(() => {
     if (!geometryRef.current || !targets) return;
     const geo = geometryRef.current;
     const aPos = geo.getAttribute("position");
     const aTarget = geo.getAttribute("aPositionTarget");
 
-    // current state = mix(position, aPositionTarget, progress)
     const p = progressRef.current;
     for (let i = 0; i < aPos.count; i++) {
       const ix = i * 3;
@@ -336,14 +324,12 @@ function Particles({
     }
     aPos.needsUpdate = true;
 
-    // new target from active model
     const target = targets.get(activeId);
     if (target) {
       aTarget.array.set(target);
       aTarget.needsUpdate = true;
     }
 
-    // remorph subtil si même id mais nav différente
     if (remorphOnSameId && prevIdRef.current === activeId && prevKeyRef.current !== morphKey) {
       jitterArray(aPos.array, remorphNoise);
       aPos.needsUpdate = true;
@@ -357,7 +343,6 @@ function Particles({
     prevKeyRef.current = morphKey;
   }, [activeId, targets, morphKey, remorphOnSameId, remorphNoise, onProgress]);
 
-  // animate progress + time
   useFrame((_, delta) => {
     if (!materialRef.current) return;
     const u = materialRef.current.uniforms;
@@ -373,7 +358,6 @@ function Particles({
 
   const dpr = Math.min(2, window.devicePixelRatio || 1);
 
-  // compensation de luminosité selon l’aire (gamma = 0.6 par défaut)
   const gamma =
     typeof glow?.autoIntensity === "number"
       ? glow.autoIntensity
@@ -382,9 +366,8 @@ function Particles({
       : null;
   const area = viewport.width * viewport.height;
   const refArea = baseAreaRef.current ?? area;
-  const ratio = Math.max(0.25, Math.min(4, refArea / area)); // clamp anti-extrêmes
+  const ratio = Math.max(0.25, Math.min(4, refArea / area));
   const intensityEffective = (glow?.intensity ?? 1) * (gamma != null ? Math.pow(ratio, gamma) : 1);
-
 
   const uniforms = React.useMemo(
     () => ({
@@ -394,16 +377,18 @@ function Particles({
       uResolution: { value: new THREE.Vector2(viewport.width, viewport.height) },
       uColorA:     { value: new THREE.Color(colorA) },
       uColorB:     { value: new THREE.Color(colorB) },
-      // glow (si utilisé par le shader)
+      uColorMix:   { value: colorMix }, // NEW
+      // glow
       uIntensity:  { value: intensityEffective },
       uMixToWhite: { value: glow?.mixToWhite ?? 0.0 },
-      // sparkle (si utilisé par le shader)
+      // sparkle
       uSparkleStrength: { value: sparkle?.strength ?? 0.0 },
       uSparkleSpeed:    { value: sparkle?.speed ?? 0.0 },
     }),
     [
       size, dpr, viewport.width, viewport.height,
-      colorA, colorB, intensityEffective, glow?.mixToWhite, glow?.core, glow?.falloff,
+      colorA, colorB, colorMix,
+      intensityEffective, glow?.mixToWhite,
       sparkle?.strength, sparkle?.speed
     ]
   );
@@ -413,7 +398,8 @@ function Particles({
     const u = materialRef.current.uniforms;
     u.uResolution.value.set(viewport.width, viewport.height);
     u.uSize.value = (size * dpr) / viewport.height;
-  }, [viewport.width, viewport.height, size, dpr]);
+    u.uColorMix.value = colorMix; // keep in sync if prop changes
+  }, [viewport.width, viewport.height, size, dpr, colorMix]);
 
   return (
     <points frustumCulled={false} renderOrder={-1}>
@@ -442,10 +428,12 @@ export function ParticleMorphBackground({
   dracoPath = "/draco/",
   fitRadius = 1.2,
 
-  // rétro-compat : si "color" est fourni, on s'en sert pour A/B
+  // couleurs
   color,
   colorA = undefined,
   colorB = undefined,
+  colorMix = 0.5,     // NEW: 0..1
+  colorMixById,       // NEW: { [id]: number }
 
   // placement/orientation "cibles" (par page)
   anchor = { x: 0.72, y: 0.5, mode: "relative" },
@@ -472,11 +460,9 @@ export function ParticleMorphBackground({
   const groupRef = React.useRef();
   const { camera, size: viewport } = useThree();
 
-  // couleurs finales
   const finalColorA = colorA || color || "#60a5fa";
   const finalColorB = colorB || colorA || color || "#a78bfa";
 
-  // merge responsive + overrides
   const effective = React.useMemo(() => {
     const base = { anchor, depth, rotation, scale };
     const rule = pickResponsive(viewport.width, responsive) || {};
@@ -490,34 +476,31 @@ export function ParticleMorphBackground({
     };
   }, [anchor, depth, rotation, scale, responsive, transformById, activeId, viewport.width]);
 
+  // mix des couleurs (global + override par page)
+  const finalColorMix = React.useMemo(() => {
+    const perId = (activeId && colorMixById && colorMixById[activeId]);
+    return typeof perId === "number" ? perId : colorMix;
+  }, [activeId, colorMixById, colorMix]);
+
   // ----- Refs pour orientation, spin, position et scale (persistantes) -----
-  const qOrientRef    = React.useRef(new THREE.Quaternion()); // orientation de base lissée
-  const qSpinRef      = React.useRef(new THREE.Quaternion()); // spin accumulé en continu
+  const qOrientRef    = React.useRef(new THREE.Quaternion());
+  const qSpinRef      = React.useRef(new THREE.Quaternion());
   const qTmpA         = React.useRef(new THREE.Quaternion());
   const qLerpStartRef = React.useRef(new THREE.Quaternion());
   const qLerpEndRef   = React.useRef(new THREE.Quaternion());
-  const lerpActiveRef = React.useRef(false);
-  const lerpTRef      = React.useRef(0);
-  const lerpDur       = 0.6; // s
 
-  const pBaseRef       = React.useRef(new THREE.Vector3()); // position actuelle appliquée
-  const pTargetRef     = React.useRef(new THREE.Vector3()); // position cible "page"
+  const pBaseRef       = React.useRef(new THREE.Vector3());
+  const pTargetRef     = React.useRef(new THREE.Vector3());
   const pLerpStartRef  = React.useRef(new THREE.Vector3());
   const pLerpEndRef    = React.useRef(new THREE.Vector3());
-  const pLerpActiveRef = React.useRef(false);
-  const pLerpTRef      = React.useRef(0);
-  const pLerpDur       = 0.6; // s
 
   const scaleBaseRef       = React.useRef(1);
   const scaleTargetRef     = React.useRef(1);
   const scaleLerpStartRef  = React.useRef(1);
   const scaleLerpEndRef    = React.useRef(1);
-  const scaleLerpActiveRef = React.useRef(false);
-  const scaleLerpTRef      = React.useRef(0);
-  const scaleLerpDur       = 0.6; // s
 
-  // position/scale cibles recalculées à chaque render, mais appliquées en douceur après morph
   const initDoneRef = React.useRef(false);
+
   React.useLayoutEffect(() => {
     if (!groupRef.current) return;
 
@@ -530,7 +513,6 @@ export function ParticleMorphBackground({
     pTargetRef.current.copy(targetPos);
     scaleTargetRef.current = effective.scale ?? 1;
 
-    // init une seule fois : on part directement à la pose cible initiale
     if (!initDoneRef.current) {
       pBaseRef.current.copy(pTargetRef.current);
       scaleBaseRef.current = scaleTargetRef.current;
@@ -546,7 +528,6 @@ export function ParticleMorphBackground({
     }
   }, [camera, viewport.width, viewport.height, effective.anchor, effective.depth, effective.scale]);
 
-  // spin effectif (merge overrides)
   const spinEffective = React.useMemo(() => {
     const base = spin || {};
     const perId = (activeId && spinById && spinById[activeId]) || {};
@@ -557,10 +538,8 @@ export function ParticleMorphBackground({
     };
   }, [spin, spinById, activeId]);
 
-  // callback progression du morph : on lance les lerps position/scale/orientation à la fin
   const handleProgress = React.useCallback(
-   (p) => {
-      // Snapshot au démarrage du morph
+    (p) => {
       if (p === 0) {
         qLerpStartRef.current.copy(qOrientRef.current);
         qLerpEndRef.current.copy(makeTargetQuatFromEffective(effective));
@@ -569,7 +548,6 @@ export function ParticleMorphBackground({
         scaleLerpStartRef.current = scaleBaseRef.current;
         scaleLerpEndRef.current   = scaleTargetRef.current;
       }
-      // Suivre la progression du morph avec la même ease que le shader
       const t = easeInOutCubic(Math.min(Math.max(p, 0), 1));
       qOrientRef.current.slerpQuaternions(
         qLerpStartRef.current,
@@ -579,16 +557,14 @@ export function ParticleMorphBackground({
       pBaseRef.current.lerpVectors(pLerpStartRef.current, pLerpEndRef.current, t);
       scaleBaseRef.current =
         scaleLerpStartRef.current * (1.0 - t) + scaleLerpEndRef.current * t;
-   },
-   [effective]
- );
+    },
+    [effective]
+  );
 
-  // loop : spin continu + lerps après morph, puis appliquer au groupe
   useFrame((_, delta) => {
     const g = groupRef.current;
     if (!g) return;
 
-    // spin en continu (ajouté à l'orientation de base)
     const sx = THREE.MathUtils.degToRad(spinEffective.x || 0) * delta;
     const sy = THREE.MathUtils.degToRad(spinEffective.y || 0) * delta;
     const sz = THREE.MathUtils.degToRad(spinEffective.z || 0) * delta;
@@ -597,7 +573,6 @@ export function ParticleMorphBackground({
       qSpinRef.current.multiply(qTmpA.current);
     }
 
-    // appliquer base (orient * spin), position et scale
     g.quaternion.copy(qOrientRef.current);
     g.quaternion.multiply(qSpinRef.current);
     g.position.copy(pBaseRef.current);
@@ -614,6 +589,7 @@ export function ParticleMorphBackground({
         speed={speed}
         colorA={finalColorA}
         colorB={finalColorB}
+        colorMix={finalColorMix}   // NEW
         morphKey={morphKey}
         onProgress={handleProgress}
         remorphOnSameId={remorphOnSameId}
@@ -636,7 +612,6 @@ export function RouteMorphBackground({ shapes, routeMap, layoutKey, ...rest }) {
     return shapes[0]?.id;
   }, [pathname, hash, routeMap, shapes]);
 
-  // clé de navigation (permet remorph subtil même si id identique)
   const morphKey = `${pathname}|${hash || ""}|${layoutKey || ""}`;
 
   return <ParticleMorphBackground shapes={shapes} activeId={activeId} morphKey={morphKey} {...rest} />;

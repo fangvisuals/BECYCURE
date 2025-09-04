@@ -1,0 +1,93 @@
+import React, { Suspense, useMemo, useEffect, useState } from "react";
+import { Canvas } from "@react-three/fiber";
+import { RouteMorphBackground } from "./ParticleMorphScene.jsx";
+
+export default function ParticlesLayer() {
+  const BASE = import.meta.env.BASE_URL || "/";
+
+  const shapes = useMemo(
+    () => [
+      { id: "home",         url: `${BASE}models/becycure.glb` },
+      { id: "services",     url: `${BASE}models/soc.glb` },
+      { id: "blog",         url: `${BASE}models/blog.glb` },
+      { id: "partenariats", url: `${BASE}models/partenariats.glb` },
+    ],
+    [BASE]
+  );
+
+  const routeMap = (pathname, hash) => {
+    const p = (pathname || "/").replace(/\/+$/, "");
+    if (hash === "#xdr") return "services";
+    if (p === "" || p === "/") return "home";
+    if (p.startsWith("/services")) return "services";
+    if (p.startsWith("/blog")) return "blog";
+    if (p.startsWith("/integration")) return "home";
+    if (p.startsWith("/partenariats")) return "partenariats";
+    return "home";
+  };
+
+  // petit ramp-up perfs
+  const [count, setCount] = useState(7000);
+  useEffect(() => {
+    const id = (window.requestIdleCallback
+      ? window.requestIdleCallback(() => setCount(9000))
+      : setTimeout(() => setCount(9000), 800)
+    );
+    return () =>
+      (window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id));
+  }, []);
+
+  return (
+    <Canvas
+      gl={{ antialias: true, powerPreference: "high-performance", alpha: true }}
+      dpr={[1, Math.min(1.75, window.devicePixelRatio || 1)]}
+      camera={{ position: [0, 0, 6], fov: 45 }}
+      onCreated={({ gl }) => {
+        const ctx = gl.getContext?.();
+        if (ctx && ctx.DITHER) ctx.disable(ctx.DITHER);
+      }}
+      // pas de background ici -> Faulty Terminal reste visible derrière
+    >
+      <Suspense fallback={null}>
+        <RouteMorphBackground
+          shapes={shapes}
+          routeMap={routeMap}
+          /* visuel et perfs */
+          particleCount={count}
+          size={30}
+          speed={0.6}
+          colorA="rgba(124, 255, 163, 1)"
+          colorB="rgba(147, 255, 201, 1)"
+          sparkle={{ strength: 0.9, speed: 2 }}
+          glow={{ intensity: 0.7, core: 0.2, falloff: 0.4, mixToWhite: 0.65, autoIntensity: 0.6 }}
+          quality="auto"
+          /* pose par défaut */
+          anchor={{ x: 0.70, y: 0.52, mode: "relative" }}
+          rotation={[0, 0, 0]}
+          scale={1.0}
+          depth={0}
+          /* poses par page */
+          transformById={{
+            home:        { anchor:{ x: 0.70, y: 0.50, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:2.5 },
+            services:    { anchor:{ x: 0.75, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.15, depth:1   },
+            blog:        { anchor:{ x: 0.63, y: 0.58, mode:"relative" }, rotation:[-5,35,0],  scale:1.1,  depth:0   },
+            partenariats:{ anchor:{ x: 0.50, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:1   },
+          }}
+          /* responsive */
+          responsive={[
+            { max: 1280, anchor: { x: 0.66, y: 0.54 }, scale: 1.1 },
+            { max: 1024, anchor: { x: 0.58, y: 0.56 }, scale: 0.95 },
+            { max: 768,  anchor: { x: 0.50, y: 0.58 }, scale: 0.80, rotation: [0, 8, 0] },
+            { max: 560,  anchor: { x: 0.50, y: 0.62 }, scale: 0.70, rotation: [0, 6, 0] },
+          ]}
+          /* rotation continue */
+          spin={{ x: 0, y: 6, z: 0 }}
+          spinById={{}}
+          /* autoriser remorph même si ID identique */
+          remorphOnSameId={true}
+          dracoPath={`${BASE}draco/`}
+        />
+      </Suspense>
+    </Canvas>
+  );
+}

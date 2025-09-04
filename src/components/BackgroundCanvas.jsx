@@ -2,13 +2,12 @@
 import React, { Suspense, useMemo, useEffect, useState } from "react";
 import { Canvas } from "@react-three/fiber";
 import { RouteMorphBackground } from "./ParticleMorphScene.jsx";
+import FaultyTerminal from "./FaultyTerminal.jsx";
+// import TechGridBackground from "./TechGridBackground.jsx"; // si besoin plus tard
 
 export default function BackgroundCanvas() {
-  console.log("[BG] BackgroundCanvas chargé depuis:", import.meta.url);
-
   const BASE = import.meta.env.BASE_URL || "/";
 
-  // ✅ NOMS DE FICHIERS RÉELS
   const shapes = useMemo(
     () => [
       { id: "home",         url: `${BASE}models/becycure.glb` },
@@ -19,7 +18,6 @@ export default function BackgroundCanvas() {
     [BASE]
   );
 
-  // HashRouter: pathname est la partie après "#/"
   const routeMap = (pathname, hash) => {
     const p = (pathname || "/").replace(/\/+$/, "");
     if (hash === "#xdr") return "services";
@@ -31,25 +29,60 @@ export default function BackgroundCanvas() {
     return "home";
   };
 
-  // petit ramp-up pour éviter un pic de charge au boot
+  // petit ramp-up pour éviter un pic CPU au boot
   const [count, setCount] = useState(7000);
   useEffect(() => {
     const id = (window.requestIdleCallback
       ? window.requestIdleCallback(() => setCount(9000))
       : setTimeout(() => setCount(9000), 800)
     );
-    return () => (window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id));
+    return () =>
+      (window.cancelIdleCallback ? window.cancelIdleCallback(id) : clearTimeout(id));
   }, []);
 
   return (
-    <div aria-hidden className="pointer-events-none fixed inset-0 z-0" style={{ contain: "paint", isolation: "isolate" }}>
+    <div
+      aria-hidden
+      className="pointer-events-none fixed inset-0 z-0"
+      style={{ contain: "paint", isolation: "isolate" }}
+    >
+      {/* --- Fond DOM derrière le canvas --- */}
+      <div className="absolute inset-0 -z-10">
+        <FaultyTerminal
+          scale={2.0}
+          gridMul={[4, 2]}
+          digitSize={3}
+          timeScale={1}
+          pause={false}
+          scanlineIntensity={0.15}
+          glitchAmount={0.5}
+          flickerAmount={0.3}
+          noiseAmp={1}
+          chromaticAberration={0}
+          dither={0}
+          curvature={0.1}
+          tint="#166427"
+          pageLoadAnimation={false}
+          brightness={1}
+        />
+      </div>
+
+      {/* --- Canvas transparent (pas de <color attach="background" /> !) --- */}
       <Canvas
-        gl={{ antialias: true, powerPreference: "high-performance", alpha: true }}
+        gl={{ antialias: true, powerPreference: "high-performance", alpha: true }} // alpha:true → laisse voir le DOM derrière
         dpr={[1, Math.min(1.75, window.devicePixelRatio || 1)]}
         camera={{ position: [0, 0, 6], fov: 45 }}
+        onCreated={({ gl }) => {
+          const ctx = gl.getContext?.();
+          if (ctx && ctx.DITHER) ctx.disable(ctx.DITHER);
+          // S’assure que le canvas n’a pas de background CSS opaque
+          gl.domElement.style.background = "transparent";
+        }}
       >
-        <color attach="background" args={["#0b0d10"]} />
         <Suspense fallback={null}>
+
+          {/* <TechGridBackground /> */}
+
           <RouteMorphBackground
             shapes={shapes}
             routeMap={routeMap}
@@ -58,8 +91,8 @@ export default function BackgroundCanvas() {
             particleCount={count}
             size={30}
             speed={0.6}
-            colorA="rgba(75, 255, 225, 1)"
-            colorB="rgba(53, 255, 104, 1)"
+            colorA="rgba(124, 255, 163, 1)"
+            colorB="rgba(147, 255, 201, 1)"
             sparkle={{ strength: 0.9, speed: 2 }}
             glow={{ intensity: 0.7, core: 0.2, falloff: 0.4, mixToWhite: 0.65, autoIntensity: 0.6 }}
             quality="auto"
@@ -75,7 +108,7 @@ export default function BackgroundCanvas() {
               home:        { anchor:{ x: 0.70, y: 0.50, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:2.5 },
               services:    { anchor:{ x: 0.75, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.15, depth:1   },
               blog:        { anchor:{ x: 0.63, y: 0.58, mode:"relative" }, rotation:[-5,35,0],  scale:1.1,  depth:0   },
-              partenariats:{ anchor:{ x: 0.50, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:1   },
+              partenariats:{ anchor:{ x: 0.73, y: 0.52, mode:"relative" }, rotation:[0, 0, 0],  scale:1.0,  depth:1   },
             }}
 
             /* responsive */
@@ -87,13 +120,10 @@ export default function BackgroundCanvas() {
             ]}
 
             /* rotation continue */
-            spin={{ x: 0, y: 8, z: 0 }}
-            spinById={{
-              services: { y: 0 },
-              blog:     { y: -6 },
-            }}
+            spin={{ x: 0, y: 6, z: 0 }}
+            spinById={{}}
 
-            /* force un morph même si deux routes mappent au même id */
+            /* autoriser un morph même si l’ID ne change pas (routes partageant un id) */
             remorphOnSameId={true}
 
             dracoPath={`${BASE}draco/`}

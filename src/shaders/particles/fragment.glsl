@@ -11,11 +11,10 @@ uniform float uTime;          // pour le scintillement
 uniform float uSparkleStrength; // 0..1
 uniform float uSparkleSpeed;    // Hz
 
-varying float vMix;           // gardé pour compat, non utilisé ici
+
 varying float vRnd;           // seed par particule (0..1)
 
 void main() {
-  // ---- masque de point & halo 1/d (style demandé) ----
   vec2 uv = gl_PointCoord;                 // 0..1
   float d = length(uv - 0.5);              // distance au centre
   // évite la division par 0, mêmes constantes que l’exemple
@@ -26,7 +25,7 @@ void main() {
   vec3 color = mix(uColorA, uColorB, vRnd);
 
   // option “néon” : centre un peu plus blanc (suivant uMixToWhite)
-  float center = 1.0 - smoothstep(0.0, 0.20, d); // 0.20 ≈ cœur ~20% du disque
+  float center = 1.0 - smoothstep(0.0, 0.10, d); // 0.20 ≈ cœur ~20% du disque
   color = mix(color, vec3(1.0), center * uMixToWhite);
 
   // ---- scintillement subtil (alpha) ----

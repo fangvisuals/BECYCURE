@@ -5,18 +5,23 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import BrandLink from "./components/BrandLink";
 import BackButton from "./components/BackButton";
-import Loader from "./components/Loader";
+import Loader from "./components/Loader.jsx";
+
 
 // 🔻 lazy split : le fond 3D (three + r3f + loaders) sort du bundle principal
 const BackgroundCanvas = lazy(() => import("./components/BackgroundCanvas.jsx"));
 
 // ——— Pages ———
 const Home         = lazy(() => import("./pages/Home.jsx"));
-const Integration  = lazy(() => import("./pages/Integration"));
-const Services     = lazy(() => import("./pages/Services"));
-const Conseil      = lazy(() => import("./pages/Conseil"));
-const Partenariats = lazy(() => import("./pages/Partenariats"));
-const Blog         = lazy(() => import("./pages/Blog"));
+const Integration  = lazy(() => import("./pages/Integration.jsx"));
+const Services     = lazy(() => import("./pages/Services.jsx"));
+const Conseil      = lazy(() => import("./pages/Conseil.jsx"));
+const Partenariats = lazy(() => import("./pages/Partenariats.jsx"));
+const Blog         = lazy(() => import("./pages/Blog.jsx"));
+const BlogPost     = lazy(() => import("./pages/BlogPost.jsx"));
+
+
+
 
 function AnimatedRoutes() {
   const location = useLocation();
@@ -38,6 +43,7 @@ function AnimatedRoutes() {
             <Route path="/conseil" element={<Conseil />} />
             <Route path="/partenariats" element={<Partenariats />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
         </Routes>
         </Suspense>
       </motion.div>
@@ -88,14 +94,16 @@ export default function App() {
         {/* Fond 3D en lazy + idle */}
         {showBg && (
           <Suspense fallback={null}>
-            <BackgroundCanvas />
+            <BackgroundCanvas showFaulty={true} />
           </Suspense>
         )}
 
         {/* Contenu principal */}
         <div className="flex flex-col min-h-screen relative z-10 pt-24 main-wrapper">
           <BrandLink />
-          <main className="flex-1 flex items-center justify-start px-24 overflow-hidden">
+          <main className="flex-1 flex items-center justify-start
+                  px-4 sm:px-6 md:px-10 lg:px-24
+                  overflow-hidden">
             <div className="w-full max-w-4xl">
               <AnimatedRoutes />
             </div>

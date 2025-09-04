@@ -3,6 +3,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import BackButton from '../components/BackButton.jsx'
+import GradientText from '../components/GradientText.jsx'
+import ScrambleText from '../components/Scramble.jsx'
+import Panel from '../components/Panel.jsx';
 
 export default function Integration() {
   return (
@@ -11,9 +14,32 @@ export default function Integration() {
 
       {/* Contenu principal */}
       <div className="relative z-10 px-8 py-20 max-w-5xl ml-0">
-        <BackButton className="mb-4" />
-        <h1 className="title gradient-text mb-8">/ INTÉGRATION</h1>
-        <p className="text-lg leading-relaxed text-gray-200 mb-6">
+        <BackButton strokeClass='stroke-blue-300' className="mb-4" />
+        <h1 className="title leading-tight">
+            {/* Ligne 1 : L'IA (gradient animé) + POUR ÉCLAIRER (blanc) */}
+            <span className="block">
+              <span className="inline-flex items-baseline gap-x-2 md:gap-x-3">
+                <GradientText
+                  colors={["#4340ffff", "#81cefaff", "#4093ffff", "#4093ffff", "#4340ffff"]}
+                  animationSpeed={3}
+                >
+                  <ScrambleText
+                    as="span"
+                    text={"/ INTÉGRATION"}
+                    trigger="mount"
+                    duration={300}
+                    cyclesPerLetter={4}
+                    shuffleMs={120}
+                    respectMotion={false}
+                    reserveWidth={false}  // évite les grands blancs pendant l’anim
+                  />
+                </GradientText>
+              </span>
+            </span>
+        </h1>
+
+        <Panel border='ring-1 ring-sky-500/10'>
+        <p className="text-lg leading-relaxed text-gray-200 mb-6 pt-6">
           <span className='font-bold font-inter'>BECYCURE</span> vous accompagne dans l'intégration de vos solutions de cybersécurité avec une approche modulaire, progressive et totalement adaptée à vos contraintes SI.
         </p>
 
@@ -32,6 +58,7 @@ export default function Integration() {
         <p className="text-gray-300 mb-6">
           Nous développons des connecteurs sur mesure pour interfacer vos outils métiers (ITSM, SIEM, IAM, etc.) et maximiser l’automatisation des tâches à faible valeur ajoutée.
         </p>
+        </Panel>
       </div>
     </div>
   );

@@ -1,29 +1,87 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import BackButton from '../components/BackButton.jsx'
+import { sanity } from '@/sanity/client';
+import { urlFor } from '@/sanity/image';
+import GradientText from '../components/GradientText';
+import Scramble from '../components/Scramble';
+import BackButton from '../components/BackButton';
+
+const POSTS_QUERY = `*[
+  _type == "post" && defined(slug.current)
+]|order(publishedAt desc)[0...12]{
+  _id, title, slug, publishedAt, image
+}`;
 
 export default function Blog() {
+  const [posts, setPosts] = React.useState(null);
+  const [loading, setLoading] = React.useState(true);
+  const [err, setErr] = React.useState(null);
+
+  React.useEffect(() => {
+    sanity
+      .fetch(POSTS_QUERY)
+      .then(setPosts)
+      .catch(setErr)
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <div className="text-white/80">Chargement…</div>;
+  if (err) return <div className="text-red-400">Erreur: {String(err)}</div>;
+
   return (
-    <div className="min-h-screen text-white relative overflow-hidden">
-      <div className="relative z-10 px-8 py-20 max-w-5xl mx-auto">
+    <main className="relative z-10 mx-auto w-full max-w-4xl px-10 text-white">
+      <div className="relative z-10 px-6 md:px-10 pt-10 md:pt-16 mx-auto">
         <BackButton className="mb-4" />
-        <h1 className="title gradient-text mb-8">/ ACTUALITÉS</h1>
-        <p className="text-lg leading-relaxed text-gray-200 mb-6">
-          Retrouvez ici nos actualités, analyses, retours d’expérience et conseils pour renforcer votre cybersécurité.
-        </p>
-        <h2 className="text-2xl font-semibold text-white mb-4 font-space-grotesk">Veille & tendances</h2>
-        <p className="text-gray-300 mb-6">
-          Suivez les dernières tendances, menaces et innovations du secteur à travers nos articles de veille.
-        </p>
-        <h2 className="text-2xl font-semibold text-white mb-4 font-space-grotesk">Retours d’expérience</h2>
-        <p className="text-gray-300 mb-6">
-          Découvrez des cas concrets, des témoignages clients et des bonnes pratiques issues de nos missions.
-        </p>
-        <h2 className="text-2xl font-semibold text-white mb-4 font-space-grotesk">Conseils d’experts</h2>
-        <p className="text-gray-300 mb-6">
-          Nos consultants partagent leurs recommandations pour améliorer la sécurité de votre système d’information.
-        </p>
-      </div>
-    </div>
+        <h1 className="title leading-tight">
+          <span className="block">
+            <span className="inline-flex items-baseline gap-x-2 md:gap-x-3">
+              <GradientText
+                colors={["#40ffaa", "#81fa9fff", "#40ffd6ff", "#40ffafff", "#40ffaa"]}
+                      animationSpeed={3}
+                    >
+                      <Scramble
+                        as="span"
+                        text={"/ ACTUALITÉS"}
+                        trigger="mount"
+                        duration={300}
+                        cyclesPerLetter={4}
+                        shuffleMs={120}
+                        respectMotion={false}
+                        reserveWidth={false}
+                      />
+                    </GradientText>
+                  </span>
+                </span>
+              </h1>
+            </div>
+
+      <ul className="grid gap-5 sm:grid-cols-3 pt-10">
+        {posts?.map((p) => {
+          const href = `/blog/${p.slug.current}`;
+          const img = urlFor(p.image)?.width(800).height(450).fit('crop').url();
+          return (
+            <li key={p._id} className="rounded-xl bg-white/5 ring-1 ring-white/10 overflow-hidden">
+              <Link to={href} className="block backdrop-blur-sm hover:bg-white/5 transition">
+                {img && (
+                  <img
+                    src={img}
+                    alt={p.title}
+                    className="w-full aspect-video object-cover"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                )}
+                <div className="p-4">
+                  <h2 className="text-lg font-space-grotesk font-semibold">{p.title}</h2>
+                  <p className="text-xs text-white/60 mt-1">
+                    {new Date(p.publishedAt).toLocaleDateString('fr-FR')}
+                  </p>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </main>
   );
 }

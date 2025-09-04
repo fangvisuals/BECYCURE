@@ -1,13 +1,37 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import BackButton from '../components/BackButton.jsx'
+import GradientText from '../components/GradientText.jsx';
+import Scramble from '../components/Scramble.jsx';
 
 export default function Services() {
   return (
     <div className="min-h-screen text-white relative overflow-hidden">
-      <div className="relative z-10 px-8 py-20 max-w-5xl mx-auto">
-        <BackButton className="mb-4" />
-        <h1 className="title gradient-text mb-8">/ SERVICES MANAGÉS</h1>
+          {/* En-tête (conteneur étroit) */}
+          <div className="relative z-10 px-6 md:px-10 pt-10 md:pt-16  mx-auto">
+            <BackButton className="mb-4" />
+            <h1 className="title leading-tight">
+              <span className="block">
+                <span className="inline-flex items-baseline gap-x-2 md:gap-x-3">
+                  <GradientText
+                    colors={["#40ffaa", "#81fa9fff", "#40ffd6ff", "#40ffafff", "#40ffaa"]}
+                    animationSpeed={3}
+                  >
+                    <Scramble
+                      as="span"
+                      text={"/ SERVICES MANAGÉS"}
+                      trigger="mount"
+                      duration={300}
+                      cyclesPerLetter={4}
+                      shuffleMs={120}
+                      respectMotion={false}
+                      reserveWidth={false}
+                    />
+                  </GradientText>
+                </span>
+              </span>
+            </h1>
+          </div>
         <p className="text-lg leading-relaxed text-gray-200 mb-6">
           Nos services managés assurent la supervision, la maintenance et l’optimisation continue de vos solutions de cybersécurité, 24/7.
         </p>
@@ -24,6 +48,5 @@ export default function Services() {
           Un interlocuteur dédié vous accompagne pour adapter nos services à l’évolution de vos besoins et de votre contexte métier.
         </p>
       </div>
-    </div>
   );
 }

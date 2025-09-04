@@ -2,9 +2,9 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 
 /**
- * BackButton — style minimaliste (comme l'exemple), compatible Vite + React Router
+ * BackButton — style minimaliste, compatible Vite + React Router
  *
- * Apparaît idéalement AU‑DESSUS des <h1> de vos pages.
+ * Apparaît idéalement AU‑DESSUS des <h1> des pages.
  *
  * Props:
  *  - to?: chemin cible fixe (ex: "/services"). Si absent, navigate(-1), sinon fallback "/".
@@ -47,7 +47,6 @@ export default function BackButton({
       aria-label={title}
       title={title}
       className={
-        // Style demandé : curseur, animation scale au hover et active
         "cursor-pointer duration-200 hover:scale-125 active:scale-100 " +
         // Accessibilité : focus visible
         "focus:outline-none" +
