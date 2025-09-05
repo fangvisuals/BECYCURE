@@ -2,6 +2,7 @@
 import { Renderer, Program, Mesh, Color, Triangle } from "ogl";
 import { useEffect, useRef, useMemo, useCallback } from "react";
 
+// -- Fullscreen pass shaders --------------------------------------------------
 const vertexShader = `
 attribute vec2 position;
 attribute vec2 uv;
@@ -35,13 +36,17 @@ uniform float uNoiseAmp;
 uniform float uChromaticAberration;
 uniform float uDither;
 uniform float uCurvature;
-uniform vec3  uTint;
+
+uniform vec3  uTint;                 // couleur du rendu (chiffres, scanlines)
+uniform vec3  uBg;                   // couleur de fond
+uniform float uBrightness;
+
 uniform vec2  uMouse;
 uniform float uMouseStrength;
 uniform float uUseMouse;
+
 uniform float uPageLoadProgress;
 uniform float uUsePageLoadAnimation;
-uniform float uBrightness;
 
 float time;
 
@@ -51,48 +56,44 @@ float hash21(vec2 p){
   return fract(p.x * p.y);
 }
 
-float noise(vec2 p)
-{
+float noise(vec2 p){
   return sin(p.x * 10.0) * sin(p.y * (3.0 + sin(time * 0.090909))) + 0.2;
 }
 
-mat2 rotate(float angle)
-{
-  float c = cos(angle);
-  float s = sin(angle);
+mat2 rotate(float a){
+  float c = cos(a), s = sin(a);
   return mat2(c, -s, s, c);
 }
 
-float fbm(vec2 p)
-{
+float fbm(vec2 p){
   p *= 1.1;
   float f = 0.0;
   float amp = 0.5 * uNoiseAmp;
 
-  mat2 modify0 = rotate(time * 0.02);
+  mat2 m0 = rotate(time * 0.02);
   f += amp * noise(p);
-  p = modify0 * p * 2.0;
-  amp *= 0.454545; // 1/2.2
+  p = m0 * p * 2.0;
+  amp *= 0.454545; // ~1/2.2
 
-  mat2 modify1 = rotate(time * 0.02);
+  mat2 m1 = rotate(time * 0.02);
   f += amp * noise(p);
-  p = modify1 * p * 2.0;
+  p = m1 * p * 2.0;
   amp *= 0.454545;
 
-  mat2 modify2 = rotate(time * 0.08);
+  mat2 m2 = rotate(time * 0.08);
   f += amp * noise(p);
 
   return f;
 }
 
 float pattern(vec2 p, out vec2 q, out vec2 r) {
-  vec2 offset1 = vec2(1.0);
-  vec2 offset0 = vec2(0.0);
-  mat2 rot01 = rotate(0.1 * time);
-  mat2 rot1 = rotate(0.1);
+  vec2 o1 = vec2(1.0);
+  vec2 o0 = vec2(0.0);
+  mat2 r01 = rotate(0.1 * time);
+  mat2 r1  = rotate(0.1);
 
-  q = vec2(fbm(p + offset1), fbm(rot01 * p + offset1));
-  r = vec2(fbm(rot1 * q + offset0), fbm(q + offset0));
+  q = vec2(fbm(p + o1), fbm(r01 * p + o1));
+  r = vec2(fbm(r1 * q + o0), fbm(q + o0));
   return fbm(p + r);
 }
 
@@ -139,19 +140,18 @@ float digit(vec2 p){
   return step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0) * brightness;
 }
 
-float onOff(float a, float b, float c)
-{
+float onOff(float a, float b, float c){
   return step(c, sin(iTime + a * cos(iTime * b))) * uFlickerAmount;
 }
 
-float displace(vec2 look)
-{
+float displace(vec2 look){
   float y = look.y - mod(iTime * 0.25, 1.0);
   float window = 1.0 / (1.0 + 50.0 * y * y);
   return sin(look.y * 20.0 + iTime) * 0.0125 * onOff(4.0, 2.0, 0.8) * (1.0 + cos(iTime * 60.0)) * window;
 }
 
-vec3 getColor(vec2 p){
+// Retourne la couleur "contenu" + un "brightness" pour mixer avec le fond
+vec3 getColor(vec2 p, out float outBrightness){
   float bar = step(mod(p.y + time * 20.0, 1.0), 0.2) * 0.4 + 1.0;
   bar *= uScanlineIntensity;
 
@@ -168,7 +168,10 @@ vec3 getColor(vec2 p){
   const float off = 0.002;
   float sum = digit(p + vec2(-off, -off)) + digit(p + vec2(0.0, -off)) + digit(p + vec2(off, -off)) +
               digit(p + vec2(-off, 0.0)) + digit(p + vec2(0.0, 0.0)) + digit(p + vec2(off, 0.0)) +
-              digit(p + vec2(-off, off)) + digit(p + vec2(0.0, off)) + digit(p + vec2(off, off));
+              digit(p + vec2(-off,  off)) + digit(p + vec2(0.0,  off)) + digit(p + vec2(off,  off));
+
+  // brightness sert d'alpha pour mixer avec le fond
+  outBrightness = clamp(middle + sum * 0.1, 0.0, 1.0);
 
   vec3 baseColor = vec3(0.9) * middle + sum * 0.1 * vec3(1.0) * bar;
   return baseColor;
@@ -195,17 +198,26 @@ void main() {
   float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
 
   vec2 p = uv * uScale;
-  vec3 col = getColor(p);
 
+  float bri;
+  vec3 content = getColor(p, bri);
+
+  // aberration chromatique (sur le contenu)
   if(uChromaticAberration != 0.0){
     vec2 ca = vec2(uChromaticAberration) / iResolution.xy;
-    col.r = getColor(p + ca).r;
-    col.b = getColor(p - ca).b;
+    float r = getColor(p + ca, bri).r;
+    float b = getColor(p - ca, bri).b;
+    content.r = r;
+    content.b = b;
   }
 
-  col *= uTint;
-  col *= uBrightness;
+  // Applique teinte + luminosité sur le contenu
+  vec3 fg = content * uTint * uBrightness;
 
+  // Mix finale: fond (uBg) + contenu (fg) selon brightness
+  vec3 col = mix(uBg, fg, bri);
+
+  // Dither léger optionnel
   if(uDither > 0.0){
     float rnd = hash21(gl_FragCoord.xy);
     col += (rnd - 0.5) * (uDither * 0.003922);
@@ -220,11 +232,11 @@ void main() {
 }
 `;
 
-// utils
+// -- utils --------------------------------------------------------------------
 function hexToRgb(hex) {
-  let h = hex.replace("#", "").trim();
+  let h = String(hex || "").replace("#", "").trim();
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-  const num = parseInt(h, 16);
+  const num = parseInt(h || "000000", 16);
   return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
 }
 
@@ -235,6 +247,8 @@ function hexToRgb(hex) {
  *  - lockAspect (bool, def true): verrouille le ratio du contenu
  *  - aspect (def 16/9): ratio cible quand lockAspect = true
  *  - fitMode: "contain" (letterbox), "cover" (crop) ou "stretch"
+ *  - bg:     couleur de fond (ex: "#08110b")
+ *  - tint:   couleur du rendu (chiffres/scanlines)
  *
  * Astuce: place-le en plein écran: className="absolute inset-0" derrière le Canvas R3F.
  */
@@ -246,17 +260,18 @@ export default function FaultyTerminal({
 
   // look
   scale = 2.0,
-  gridMul = [5, 3],
+  gridMul = [4, 2],
   digitSize = 2.5,
-  timeScale = 3.0,
+  timeScale = 1,
   pause = false,
   scanlineIntensity = 0.15,
   glitchAmount = 0.5,
   flickerAmount = 0.3,
-  noiseAmp = 5.0,
+  noiseAmp = 1,
   chromaticAberration = 0.1,
   dither = 0,
   curvature = 0.2,
+  bg = "#08110b",
   tint = "#2a8548",
   brightness = 1,
 
@@ -271,9 +286,8 @@ export default function FaultyTerminal({
   dpr = Math.min(typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1, 2),
 
   // wrapper
-  className,
-  style,
-  ...rest
+  className = "",
+  style
 }) {
   const containerRef = useRef(null);
   const programRef = useRef(null);
@@ -286,6 +300,7 @@ export default function FaultyTerminal({
   const timeOffsetRef = useRef(Math.random() * 100);
 
   const tintVec = useMemo(() => hexToRgb(tint), [tint]);
+  const bgVec   = useMemo(() => hexToRgb(bg),   [bg]);
   const ditherValue = useMemo(
     () => (typeof dither === "boolean" ? (dither ? 1 : 0) : dither),
     [dither]
@@ -345,7 +360,7 @@ export default function FaultyTerminal({
     const renderer = new Renderer({ dpr });
     rendererRef.current = renderer;
     const gl = renderer.gl;
-    gl.clearColor(0, 0, 0, 1);
+    gl.clearColor(0, 0, 0, 0); // transparent; le fond est rendu par le shader
 
     const geometry = new Triangle(gl);
 
@@ -374,7 +389,10 @@ export default function FaultyTerminal({
         uChromaticAberration: { value: chromaticAberration },
         uDither: { value: ditherValue },
         uCurvature: { value: curvature },
+
         uTint: { value: new Color(tintVec[0], tintVec[1], tintVec[2]) },
+        uBg:   { value: new Color(bgVec[0],   bgVec[1],   bgVec[2])   },
+        uBrightness: { value: brightness },
 
         uMouse: { value: new Float32Array([smoothMouseRef.current.x, smoothMouseRef.current.y]) },
         uMouseStrength: { value: mouseStrength },
@@ -382,8 +400,6 @@ export default function FaultyTerminal({
 
         uPageLoadProgress: { value: pageLoadAnimation ? 0 : 1 },
         uUsePageLoadAnimation: { value: pageLoadAnimation ? 1 : 0 },
-
-        uBrightness: { value: brightness },
       },
     });
     programRef.current = program;
@@ -404,7 +420,11 @@ export default function FaultyTerminal({
       const w = ctn.offsetWidth || 1;
       const h = ctn.offsetHeight || 1;
       renderer.setSize(w, h);
-      program.uniforms.iResolution.value = new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height);
+      program.uniforms.iResolution.value = new Color(
+        gl.canvas.width,
+        gl.canvas.height,
+        gl.canvas.width / gl.canvas.height
+      );
       applyFitUniforms(w, h);
     }
 
@@ -428,9 +448,9 @@ export default function FaultyTerminal({
       }
 
       if (pageLoadAnimation && loadAnimationStartRef.current > 0) {
-        const animationDuration = 2000;
+        const animationDuration = 2000.0;
         const animationElapsed = t - loadAnimationStartRef.current;
-        const progress = Math.min(animationElapsed / animationDuration, 1);
+        const progress = Math.min(Math.max(animationElapsed / animationDuration, 0), 1);
         program.uniforms.uPageLoadProgress.value = progress;
       }
 
@@ -475,6 +495,7 @@ export default function FaultyTerminal({
     ditherValue,
     curvature,
     tintVec,
+    bgVec,
     mouseReact,
     mouseStrength,
     pageLoadAnimation,
@@ -484,14 +505,14 @@ export default function FaultyTerminal({
     lockAspect,
     aspect,
     fitMode,
+    calcFit
   ]);
 
   return (
     <div
       ref={containerRef}
-      className={`w-full h-full relative overflow-hidden ${className || ""}`}
+      className={`w-full h-full relative overflow-hidden ${className}`}
       style={style}
-      {...rest}
     />
   );
 }

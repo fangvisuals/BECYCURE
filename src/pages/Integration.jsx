@@ -17,7 +17,7 @@ export default function Integration() {
       {/* Contenu principal */}
       
       <div className="relative z-10 max-w-5xl">
-        <BackButton strokeClass='stroke-blue-300' className="mb-4" />
+        <BackButton strokeClass='stroke-green-300' className="mb-4" />
         <h1 className="title text-[9.5vw] sm:text-6xl lg:text-7xl leading-[1.05] mb-8">
             <span className="block">
               <span className="inline-flex items-baseline gap-x-2 md:gap-x-3">

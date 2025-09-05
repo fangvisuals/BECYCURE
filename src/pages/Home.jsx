@@ -25,7 +25,7 @@ export default function Home() {
       as="section"
       px="px-5 sm:px-6 md:px-8 lg:px-12"
       py="py-0"
-      className="space-y-8 pt-[16vh] md:pt-[20vh]"
+      className="space-y-8 pt-[10vh] md:pt-[20vh]"
     >
       <motion.div
         initial={{ opacity: 0, y: 20 }}

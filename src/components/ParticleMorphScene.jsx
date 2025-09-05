@@ -422,7 +422,7 @@ function Particles({
 export function ParticleMorphBackground({
   shapes,
   activeId,
-  particleCount = 9000,
+  particleCount = 3000,
   size = 8.0,
   speed = 0.9,
   dracoPath = "/draco/",
@@ -460,8 +460,8 @@ export function ParticleMorphBackground({
   const groupRef = React.useRef();
   const { camera, size: viewport } = useThree();
 
-  const finalColorA = colorA || color || "#60a5fa";
-  const finalColorB = colorB || colorA || color || "#a78bfa";
+  const finalColorA = colorA || color || "#60fa93";
+  const finalColorB = colorB || colorA || colorB || "#a78bfa";
 
   const effective = React.useMemo(() => {
     const base = { anchor, depth, rotation, scale };

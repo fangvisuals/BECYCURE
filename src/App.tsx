@@ -90,7 +90,7 @@ export default function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-[#080808] text-white overflow-x-hidden relative">
+      <div className="min-h-screen bg-[#010101] text-white overflow-x-hidden relative">
         {/* Fond 3D en lazy + idle */}
         {showBg && (
           <Suspense fallback={null}>
