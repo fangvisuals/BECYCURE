@@ -3,11 +3,16 @@ import react from "@vitejs/plugin-react";
 import glsl from "vite-plugin-glsl";
 import { fileURLToPath, URL } from "node:url";
 
-const isCI = process.env.CI === 'true'
-const isGhPages = process.env.DEPLOY_TARGET === 'gh-pages'
+// Nom du dépôt GitHub Pages (chemin de base)
+const repoName = "BECYCURE";
+
+// Détection si on est en déploiement GitHub Pages
+const isGhPages =
+  process.env.GITHUB_PAGES === "true" ||
+  process.env.DEPLOY_TARGET === "gh-pages";
 
 export default defineConfig({
-  base: isCI && isGhPages ? "/BECYCURE/" : "/",
+  base: isGhPages ? `/${repoName}/` : "/",
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -26,7 +31,6 @@ export default defineConfig({
     modulePreload: { polyfill: false },
     rollupOptions: {
       output: {
-        // met three + r3f + loaders dans un chunk séparé (chargé seulement pour le Canvas)
         manualChunks: {
           "three-vendor": [
             "three",
