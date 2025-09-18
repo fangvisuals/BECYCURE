@@ -1,4 +1,4 @@
-import{R as l,j as e}from"./three-vendor-500cfa07.js";import{s as E,u as p}from"./image-3ed28af4.js";import{G as C,S as M}from"./GradientText-d918fa63.js";import{B as P}from"./BackButton-bf5f1543.js";import{P as A}from"./PageContainer-effd58cf.js";import{a as L,L as R}from"./index-a9a9b853.js";const u=6,U=`{
+import{R as l,j as e}from"./three-vendor-500cfa07.js";import{s as E,u as p}from"./image-3ed28af4.js";import{G as C,S as M}from"./GradientText-9acdbe86.js";import{B as P}from"./BackButton-58892130.js";import{P as A}from"./PageContainer-effd58cf.js";import{a as L,L as R}from"./index-041c75ff.js";const u=6,U=`{
   "items": *[_type == "post" && defined(slug.current)]
     | order(publishedAt desc)[$offset...$end]{
       _id, title, slug, publishedAt, image,
