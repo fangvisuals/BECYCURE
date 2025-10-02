@@ -7,6 +7,7 @@ import { urlFor } from "@/sanity/image";
 import BackButton from "@/components/BackButton.jsx";
 import Panel from "@/components/Panel.jsx";
 import PageContainer from "@/components/layout/PageContainer.jsx";
+import SEO from "@/seo/SEO.jsx";
 
 // Fetch the post + author (name + image)
 const POST_QUERY = `*[_type == "post" && slug.current == $slug][0]{
@@ -150,8 +151,30 @@ export default function BlogPost() {
       maxW="max-w-[min(94vw,1000px)]"
       px="px-5 sm:px-6 md:px-8"
       py="py-8 sm:py-10 md:py-12 lg:py-16"
-      className="text-white"
+      className="text-white/80"
     >
+      <SEO
+        title={(post?.title ? `${post.title} — Blog | BECYCURE` : 'Article — Blog | BECYCURE')}
+        description={undefined}
+        canonicalPath={post?.slug?.current ? `/blog/${post.slug.current}` : undefined}
+        ogImage={cover || ((import.meta.env.BASE_URL || "/") + "pictures/ogImage.png")}
+        structuredData={[{
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          name: "BECYCURE",
+          url: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin),
+          logo: ((import.meta.env.VITE_SITE_ORIGIN || window.location.origin).replace(/\/$/, "")) + (import.meta.env.BASE_URL || "/") + "android-chrome-512x512.png",
+          sameAs: ["https://fr.linkedin.com/company/becycure"],
+        }, {
+          "@context": "https://schema.org",
+          "@type": "BreadcrumbList",
+          itemListElement: [
+            { "@type": "ListItem", position: 1, name: "Accueil", item: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin) + (import.meta.env.BASE_URL || "/") },
+            { "@type": "ListItem", position: 2, name: "Actualités", item: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin) + (import.meta.env.BASE_URL || "/") + "blog" },
+            post?.slug?.current ? { "@type": "ListItem", position: 3, name: post.title || 'Article', item: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin) + (import.meta.env.BASE_URL || "/") + `blog/${post.slug.current}` } : null,
+          ].filter(Boolean),
+        }]}
+      />
       {/* Force Back to home (not history back) */}
       <BackButton className="mb-3" to="/blog" title="Retour aux articles" />
 
@@ -184,7 +207,7 @@ export default function BlogPost() {
             )}
             <div className="text-sm">
               {post.author?.name && (
-                <div className="font-medium text-white/90">
+                <div className="font-medium text-grey/90">
                   {post.author.name}
                 </div>
               )}
@@ -199,7 +222,7 @@ export default function BlogPost() {
             prose prose-invert max-w-none
             prose-headings:font-space-grotesk
             prose-h2:scroll-mt-24 prose-h3:scroll-mt-24
-            prose-p:text-white/90 prose-a:text-green-400 hover:prose-a:text-green-300
+            prose-p:text-grey/90 prose-a:text-green-400 hover:prose-a:text-green-300
             prose-strong:text-white prose-em:text-white
             prose-li:marker:text-white/60 max-w-none
             prose-img:rounded-xl

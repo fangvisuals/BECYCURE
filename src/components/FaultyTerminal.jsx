@@ -1,518 +1,335 @@
-// src/components/FaultyTerminal.jsx
-import { Renderer, Program, Mesh, Color, Triangle } from "ogl";
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useEffect, useRef, useMemo } from "react";
 
-// -- Fullscreen pass shaders --------------------------------------------------
-const vertexShader = `
-attribute vec2 position;
-attribute vec2 uv;
-varying vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0.0, 1.0);
-}
-`;
+const CHARSET = "0123456789ABCDEFGHJKLMNOPQRSTUVWXYZ/\\-_[]<>(){}";
 
-const fragmentShader = `
-precision mediump float;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
-varying vec2 vUv;
-
-uniform float iTime;
-uniform vec3  iResolution;           // (width, height, aspect)
-uniform float uScale;
-
-// aspect locking / fit
-uniform vec2  uFitScale;             // scaleX, scaleY
-uniform vec2  uFitOffset;            // offsetX, offsetY
-uniform float uUseMaskOutside;       // 1.0 => letterbox noirs (utile pour "contain")
-
-uniform vec2  uGridMul;
-uniform float uDigitSize;
-uniform float uScanlineIntensity;
-uniform float uGlitchAmount;
-uniform float uFlickerAmount;
-uniform float uNoiseAmp;
-uniform float uChromaticAberration;
-uniform float uDither;
-uniform float uCurvature;
-
-uniform vec3  uTint;                 // couleur du rendu (chiffres, scanlines)
-uniform vec3  uBg;                   // couleur de fond
-uniform float uBrightness;
-
-uniform vec2  uMouse;
-uniform float uMouseStrength;
-uniform float uUseMouse;
-
-uniform float uPageLoadProgress;
-uniform float uUsePageLoadAnimation;
-
-float time;
-
-float hash21(vec2 p){
-  p = fract(p * 234.56);
-  p += dot(p, p + 34.56);
-  return fract(p.x * p.y);
+function parseHexColor(source, fallback) {
+  if (typeof source !== "string") return fallback;
+  let hex = source.trim();
+  if (hex.startsWith("#")) hex = hex.slice(1);
+  if (hex.length === 3) hex = hex.split("").map((c) => c + c).join("");
+  if (hex.length !== 6) return fallback;
+  const value = Number.parseInt(hex, 16);
+  if (Number.isNaN(value)) return fallback;
+  return {
+    r: (value >> 16) & 255,
+    g: (value >> 8) & 255,
+    b: value & 255,
+  };
 }
 
-float noise(vec2 p){
-  return sin(p.x * 10.0) * sin(p.y * (3.0 + sin(time * 0.090909))) + 0.2;
-}
+const DEFAULT_BG = parseHexColor("#071019", { r: 7, g: 16, b: 25 });
+const DEFAULT_TINT = parseHexColor("#0ea15e", { r: 14, g: 161, b: 94 });
 
-mat2 rotate(float a){
-  float c = cos(a), s = sin(a);
-  return mat2(c, -s, s, c);
-}
-
-float fbm(vec2 p){
-  p *= 1.1;
-  float f = 0.0;
-  float amp = 0.5 * uNoiseAmp;
-
-  mat2 m0 = rotate(time * 0.02);
-  f += amp * noise(p);
-  p = m0 * p * 2.0;
-  amp *= 0.454545; // ~1/2.2
-
-  mat2 m1 = rotate(time * 0.02);
-  f += amp * noise(p);
-  p = m1 * p * 2.0;
-  amp *= 0.454545;
-
-  mat2 m2 = rotate(time * 0.08);
-  f += amp * noise(p);
-
-  return f;
-}
-
-float pattern(vec2 p, out vec2 q, out vec2 r) {
-  vec2 o1 = vec2(1.0);
-  vec2 o0 = vec2(0.0);
-  mat2 r01 = rotate(0.1 * time);
-  mat2 r1  = rotate(0.1);
-
-  q = vec2(fbm(p + o1), fbm(r01 * p + o1));
-  r = vec2(fbm(r1 * q + o0), fbm(q + o0));
-  return fbm(p + r);
-}
-
-float digit(vec2 p){
-  vec2 grid = uGridMul * 15.0;
-  vec2 s = floor(p * grid) / grid;
-  p = p * grid;
-  vec2 q, r;
-  float intensity = pattern(s * 0.1, q, r) * 1.3 - 0.03;
-
-  if(uUseMouse > 0.5){
-    vec2 mouseWorld = uMouse * uScale;
-    float distToMouse = distance(s, mouseWorld);
-    float mouseInfluence = exp(-distToMouse * 8.0) * uMouseStrength * 10.0;
-    intensity += mouseInfluence;
-    float ripple = sin(distToMouse * 20.0 - iTime * 5.0) * 0.1 * mouseInfluence;
-    intensity += ripple;
-  }
-
-  if(uUsePageLoadAnimation > 0.5){
-    float cellRandom = fract(sin(dot(s, vec2(12.9898, 78.233))) * 43758.5453);
-    float cellDelay = cellRandom * 0.8;
-    float cellProgress = clamp((uPageLoadProgress - cellDelay) / 0.2, 0.0, 1.0);
-    float fadeAlpha = smoothstep(0.0, 1.0, cellProgress);
-    intensity *= fadeAlpha;
-  }
-
-  p = fract(p);
-  p *= uDigitSize;
-
-  float px5 = p.x * 5.0;
-  float py5 = (1.0 - p.y) * 5.0;
-  float x = fract(px5);
-  float y = fract(py5);
-
-  float i = floor(py5) - 2.0;
-  float j = floor(px5) - 2.0;
-  float n = i * i + j * j;
-  float f = n * 0.0625;
-
-  float isOn = step(0.1, intensity - f);
-  float brightness = isOn * (0.2 + y * 0.8) * (0.75 + x * 0.25);
-
-  return step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0) * brightness;
-}
-
-float onOff(float a, float b, float c){
-  return step(c, sin(iTime + a * cos(iTime * b))) * uFlickerAmount;
-}
-
-float displace(vec2 look){
-  float y = look.y - mod(iTime * 0.25, 1.0);
-  float window = 1.0 / (1.0 + 50.0 * y * y);
-  return sin(look.y * 20.0 + iTime) * 0.0125 * onOff(4.0, 2.0, 0.8) * (1.0 + cos(iTime * 60.0)) * window;
-}
-
-// Retourne la couleur "contenu" + un "brightness" pour mixer avec le fond
-vec3 getColor(vec2 p, out float outBrightness){
-  float bar = step(mod(p.y + time * 20.0, 1.0), 0.2) * 0.4 + 1.0;
-  bar *= uScanlineIntensity;
-
-  float displacement = displace(p);
-  p.x += displacement;
-
-  if (uGlitchAmount != 1.0) {
-    float extra = displacement * (uGlitchAmount - 1.0);
-    p.x += extra;
-  }
-
-  float middle = digit(p);
-
-  const float off = 0.002;
-  float sum = digit(p + vec2(-off, -off)) + digit(p + vec2(0.0, -off)) + digit(p + vec2(off, -off)) +
-              digit(p + vec2(-off, 0.0)) + digit(p + vec2(0.0, 0.0)) + digit(p + vec2(off, 0.0)) +
-              digit(p + vec2(-off,  off)) + digit(p + vec2(0.0,  off)) + digit(p + vec2(off,  off));
-
-  // brightness sert d'alpha pour mixer avec le fond
-  outBrightness = clamp(middle + sum * 0.1, 0.0, 1.0);
-
-  vec3 baseColor = vec3(0.9) * middle + sum * 0.1 * vec3(1.0) * bar;
-  return baseColor;
-}
-
-vec2 barrel(vec2 uv){
-  vec2 c = uv * 2.0 - 1.0;
-  float r2 = dot(c, c);
-  c *= 1.0 + uCurvature * r2;
-  return c * 0.5 + 0.5;
-}
-
-void main() {
-  time = iTime * 0.333333;
-
-  // UV avec verrouillage d'aspect: (uv - offset)/scale
-  vec2 uv = (vUv - uFitOffset) / uFitScale;
-
-  if(uCurvature != 0.0){
-    uv = barrel(uv);
-  }
-
-  // Zone visible si "contain" (mask)
-  float inside = step(0.0, uv.x) * step(uv.x, 1.0) * step(0.0, uv.y) * step(uv.y, 1.0);
-
-  vec2 p = uv * uScale;
-
-  float bri;
-  vec3 content = getColor(p, bri);
-
-  // aberration chromatique (sur le contenu)
-  if(uChromaticAberration != 0.0){
-    vec2 ca = vec2(uChromaticAberration) / iResolution.xy;
-    float r = getColor(p + ca, bri).r;
-    float b = getColor(p - ca, bri).b;
-    content.r = r;
-    content.b = b;
-  }
-
-  // Applique teinte + luminosité sur le contenu
-  vec3 fg = content * uTint * uBrightness;
-
-  // Mix finale: fond (uBg) + contenu (fg) selon brightness
-  vec3 col = mix(uBg, fg, bri);
-
-  // Dither léger optionnel
-  if(uDither > 0.0){
-    float rnd = hash21(gl_FragCoord.xy);
-    col += (rnd - 0.5) * (uDither * 0.003922);
-  }
-
-  // letterbox en "contain"
-  if (uUseMaskOutside > 0.5) {
-    col = mix(vec3(0.0), col, inside);
-  }
-
-  gl_FragColor = vec4(col, 1.0);
-}
-`;
-
-// -- utils --------------------------------------------------------------------
-function hexToRgb(hex) {
-  let h = String(hex || "").replace("#", "").trim();
-  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
-  const num = parseInt(h || "000000", 16);
-  return [((num >> 16) & 255) / 255, ((num >> 8) & 255) / 255, (num & 255) / 255];
-}
-
-/**
- * FaultyTerminal — fond animé OGL (pas R3F) avec verrouillage d'aspect et fit.
- *
- * Props clés:
- *  - lockAspect (bool, def true): verrouille le ratio du contenu
- *  - aspect (def 16/9): ratio cible quand lockAspect = true
- *  - fitMode: "contain" (letterbox), "cover" (crop) ou "stretch"
- *  - bg:     couleur de fond (ex: "#08110b")
- *  - tint:   couleur du rendu (chiffres/scanlines)
- *
- * Astuce: place-le en plein écran: className="absolute inset-0" derrière le Canvas R3F.
- */
-export default function FaultyTerminal({
-  // aspect & fit
-  lockAspect = true,
+function FaultyTerminal({
+  className = "",
+  style,
+  lockAspect = false,
   aspect = 16 / 9,
-  fitMode = "cover", // "contain" | "cover" | "stretch"
-
-  // look
-  scale = 2.0,
-  gridMul = [4, 2],
-  digitSize = 2.5,
-  timeScale = 1,
+  fitMode = "cover",
+  bg = "#071019",
+  tint = "#0ea15e",
+  brightness = 0.5,
+  scale = 2,
+  gridMul = [5, 2],
+  digitSize = 3,
+  timeScale = 0.35,
   pause = false,
-  scanlineIntensity = 0.15,
+  scanlineIntensity = 0.12,
   glitchAmount = 0.5,
   flickerAmount = 0.3,
-  noiseAmp = 1,
-  chromaticAberration = 0.1,
+  noiseAmp = 1.0,
+  chromaticAberration = 0,
   dither = 0,
-  curvature = 0.2,
-  bg = "#08110b",
-  tint = "#2a8548",
-  brightness = 1,
-
-  // interactions
+  curvature = 0,
   mouseReact = true,
-  mouseStrength = 0.2,
-
-  // timing
+  mouseStrength = 0.25,
   pageLoadAnimation = true,
-
-  // perf
-  dpr = Math.min(typeof window !== "undefined" ? (window.devicePixelRatio || 1) : 1, 2),
-
-  // wrapper
-  className = "",
-  style
+  ...rest
 }) {
-  const containerRef = useRef(null);
-  const programRef = useRef(null);
-  const rendererRef = useRef(null);
-  const mouseRef = useRef({ x: 0.5, y: 0.5 });
-  const smoothMouseRef = useRef({ x: 0.5, y: 0.5 });
-  const frozenTimeRef = useRef(0);
-  const rafRef = useRef(0);
-  const loadAnimationStartRef = useRef(0);
-  const timeOffsetRef = useRef(Math.random() * 100);
+  const canvasRef = useRef(null);
+  const animationRef = useRef(0);
+  const observerRef = useRef(null);
+  const cellsRef = useRef({ cols: 0, rows: 0, items: [] });
+  const pointerRef = useRef({ x: 0.5, y: 0.5, active: false });
+  const loadStartRef = useRef(0);
+  const lastTimeRef = useRef(0);
 
-  const tintVec = useMemo(() => hexToRgb(tint), [tint]);
-  const bgVec   = useMemo(() => hexToRgb(bg),   [bg]);
-  const ditherValue = useMemo(
-    () => (typeof dither === "boolean" ? (dither ? 1 : 0) : dither),
-    [dither]
-  );
-
-  const handleMouseMove = useCallback((e) => {
-    const ctn = containerRef.current;
-    if (!ctn) return;
-    const rect = ctn.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = 1 - (e.clientY - rect.top) / rect.height;
-    mouseRef.current = { x, y };
-  }, []);
-
-  // calc fit uniforms (offset + scale) to preserve target aspect
-  const calcFit = useCallback((w, h) => {
-    const canvasAR = w / Math.max(h, 1);
-    const targetAR = lockAspect ? aspect : canvasAR;
-
-    // default = stretch
-    let scaleX = 1.0;
-    let scaleY = 1.0;
-
-    if (fitMode === "contain") {
-      if (canvasAR > targetAR) {
-        // trop large → bandes latérales
-        scaleX = targetAR / canvasAR; // <= 1
-      } else {
-        // trop haut → bandes haut/bas
-        scaleY = canvasAR / targetAR; // <= 1
-      }
-    } else if (fitMode === "cover") {
-      if (canvasAR > targetAR) {
-        // trop large → crop haut/bas (zoom Y)
-        scaleY = canvasAR / targetAR; // >= 1
-      } else {
-        // trop haut → crop côtés (zoom X)
-        scaleX = targetAR / canvasAR; // >= 1
-      }
-    }
-    const offX = (1.0 - scaleX) * 0.5;
-    const offY = (1.0 - scaleY) * 0.5;
-
-    return {
-      scaleX,
-      scaleY,
-      offX,
-      offY,
-      useMask: fitMode === "contain" ? 1.0 : 0.0,
-    };
-  }, [fitMode, lockAspect, aspect]);
+  const gridX = Array.isArray(gridMul) ? gridMul[0] ?? 5 : Number(gridMul) || 5;
+  const gridY = Array.isArray(gridMul) ? gridMul[1] ?? gridMul[0] ?? 2 : Number(gridMul) || 2;
+  const tintColor = useMemo(() => parseHexColor(tint, DEFAULT_TINT), [tint]);
+  const bgColor = useMemo(() => parseHexColor(bg, DEFAULT_BG), [bg]);
 
   useEffect(() => {
-    const ctn = containerRef.current;
-    if (!ctn) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
 
-    const renderer = new Renderer({ dpr });
-    rendererRef.current = renderer;
-    const gl = renderer.gl;
-    gl.clearColor(0, 0, 0, 0); // transparent; le fond est rendu par le shader
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return undefined;
 
-    const geometry = new Triangle(gl);
+    loadStartRef.current = 0;
 
-    const program = new Program(gl, {
-      vertex: vertexShader,
-      fragment: fragmentShader,
-      uniforms: {
-        iTime: { value: 0 },
-        iResolution: {
-          value: new Color(gl.canvas.width, gl.canvas.height, gl.canvas.width / gl.canvas.height),
-        },
+    let disposed = false;
+    const DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const parent = canvas.parentElement || canvas;
 
-        // aspect/fit
-        uFitScale:   { value: new Float32Array([1, 1]) },
-        uFitOffset:  { value: new Float32Array([0, 0]) },
-        uUseMaskOutside: { value: 0 },
+    const size = { width: 0, height: 0 };
 
-        uScale: { value: scale },
-
-        uGridMul: { value: new Float32Array(gridMul) },
-        uDigitSize: { value: digitSize },
-        uScanlineIntensity: { value: scanlineIntensity },
-        uGlitchAmount: { value: glitchAmount },
-        uFlickerAmount: { value: flickerAmount },
-        uNoiseAmp: { value: noiseAmp },
-        uChromaticAberration: { value: chromaticAberration },
-        uDither: { value: ditherValue },
-        uCurvature: { value: curvature },
-
-        uTint: { value: new Color(tintVec[0], tintVec[1], tintVec[2]) },
-        uBg:   { value: new Color(bgVec[0],   bgVec[1],   bgVec[2])   },
-        uBrightness: { value: brightness },
-
-        uMouse: { value: new Float32Array([smoothMouseRef.current.x, smoothMouseRef.current.y]) },
-        uMouseStrength: { value: mouseStrength },
-        uUseMouse: { value: mouseReact ? 1 : 0 },
-
-        uPageLoadProgress: { value: pageLoadAnimation ? 0 : 1 },
-        uUsePageLoadAnimation: { value: pageLoadAnimation ? 1 : 0 },
-      },
-    });
-    programRef.current = program;
-
-    const mesh = new Mesh(gl, { geometry, program });
-
-    function applyFitUniforms(w, h) {
-      const { scaleX, scaleY, offX, offY, useMask } = calcFit(w, h);
-      program.uniforms.uFitScale.value[0]  = scaleX;
-      program.uniforms.uFitScale.value[1]  = scaleY;
-      program.uniforms.uFitOffset.value[0] = offX;
-      program.uniforms.uFitOffset.value[1] = offY;
-      program.uniforms.uUseMaskOutside.value = useMask;
-    }
-
-    function resize() {
-      if (!ctn || !renderer) return;
-      const w = ctn.offsetWidth || 1;
-      const h = ctn.offsetHeight || 1;
-      renderer.setSize(w, h);
-      program.uniforms.iResolution.value = new Color(
-        gl.canvas.width,
-        gl.canvas.height,
-        gl.canvas.width / gl.canvas.height
-      );
-      applyFitUniforms(w, h);
-    }
-
-    const resizeObserver = new ResizeObserver(resize);
-    resizeObserver.observe(ctn);
-    resize();
-
-    const update = (t) => {
-      rafRef.current = requestAnimationFrame(update);
-
-      if (pageLoadAnimation && loadAnimationStartRef.current === 0) {
-        loadAnimationStartRef.current = t;
-      }
-
-      if (!pause) {
-        const elapsed = (t * 0.001 + timeOffsetRef.current) * timeScale;
-        program.uniforms.iTime.value = elapsed;
-        frozenTimeRef.current = elapsed;
-      } else {
-        program.uniforms.iTime.value = frozenTimeRef.current;
-      }
-
-      if (pageLoadAnimation && loadAnimationStartRef.current > 0) {
-        const animationDuration = 2000.0;
-        const animationElapsed = t - loadAnimationStartRef.current;
-        const progress = Math.min(Math.max(animationElapsed / animationDuration, 0), 1);
-        program.uniforms.uPageLoadProgress.value = progress;
-      }
-
-      if (mouseReact) {
-        const damping = 0.08;
-        const s = smoothMouseRef.current;
-        const m = mouseRef.current;
-        s.x += (m.x - s.x) * damping;
-        s.y += (m.y - s.y) * damping;
-        const mu = program.uniforms.uMouse.value;
-        mu[0] = s.x; mu[1] = s.y;
-      }
-
-      renderer.render({ scene: mesh });
+    const updateCanvasSize = () => {
+      const rect = parent.getBoundingClientRect();
+      const width = Math.max(1, rect.width);
+      const height = Math.max(1, rect.height);
+      if (width === size.width && height === size.height) return;
+      size.width = width;
+      size.height = height;
+      canvas.width = Math.round(width * DPR);
+      canvas.height = Math.round(height * DPR);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(DPR, DPR);
+      cellsRef.current.cols = 0;
     };
-    rafRef.current = requestAnimationFrame(update);
-    ctn.appendChild(gl.canvas);
 
-    if (mouseReact) ctn.addEventListener("mousemove", handleMouseMove);
+    updateCanvasSize();
+
+    observerRef.current = new ResizeObserver(updateCanvasSize);
+    observerRef.current.observe(parent);
+
+    const initCells = (cols, rows, nowMs) => {
+      cellsRef.current = {
+        cols,
+        rows,
+        items: new Array(cols * rows).fill(null).map(() => ({
+          char: CHARSET[Math.floor(Math.random() * CHARSET.length)],
+          next: nowMs + Math.random() * 600 + 200,
+          phase: Math.random(),
+        })),
+      };
+    };
+
+    const draw = (timestamp) => {
+      if (disposed) return;
+      animationRef.current = window.requestAnimationFrame(draw);
+
+      const { width, height } = size;
+      if (width <= 0 || height <= 0) return;
+
+      if (loadStartRef.current === 0) loadStartRef.current = timestamp;
+      const loadElapsed = (timestamp - loadStartRef.current) * 0.001;
+      const loadProgress = pageLoadAnimation
+        ? clamp(loadElapsed / 1.2, 0, 1)
+        : 1;
+
+      const effectiveTime = pause
+        ? lastTimeRef.current
+        : timestamp * 0.001 * Math.max(timeScale, 0.05);
+      if (!pause) lastTimeRef.current = effectiveTime;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = `rgb(${bgColor.r}, ${bgColor.g}, ${bgColor.b})`;
+      ctx.fillRect(0, 0, width, height);
+
+      let drawX = 0;
+      let drawY = 0;
+      let drawW = width;
+      let drawH = height;
+
+      if (lockAspect && aspect > 0) {
+        const containerAspect = width / height;
+        const targetAspect = aspect;
+        if (fitMode === "contain") {
+          if (containerAspect > targetAspect) {
+            drawH = height;
+            drawW = height * targetAspect;
+            drawX = (width - drawW) / 2;
+          } else {
+            drawW = width;
+            drawH = width / targetAspect;
+            drawY = (height - drawH) / 2;
+          }
+        } else if (fitMode === "cover") {
+          if (containerAspect > targetAspect) {
+            drawW = width;
+            drawH = width / targetAspect;
+            drawY = (height - drawH) / 2;
+          } else {
+            drawH = height;
+            drawW = height * targetAspect;
+            drawX = (width - drawW) / 2;
+          }
+        }
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(drawX, drawY, drawW, drawH);
+      ctx.clip();
+
+      const normalizedScale = clamp(scale, 0.5, 6);
+      const baseFont = clamp(digitSize, 1, 10) * 6;
+      const fontSize = baseFont * normalizedScale;
+      const baseCols = Math.max(6, Math.floor(drawW / (fontSize * 0.8)));
+      const baseRows = Math.max(4, Math.floor(drawH / (fontSize * 1.4)));
+      const gridCols = Math.max(6, Math.round(baseCols * clamp(gridX, 0.5, 12) / 5));
+      const gridRows = Math.max(4, Math.round(baseRows * clamp(gridY, 0.5, 12) / 2));
+
+      if (
+        cellsRef.current.cols !== gridCols ||
+        cellsRef.current.rows !== gridRows
+      ) {
+        initCells(gridCols, gridRows, effectiveTime * 1000);
+      }
+
+      const { cols, rows, items } = cellsRef.current;
+      const cellWidth = drawW / cols;
+      const cellHeight = drawH / rows;
+
+      ctx.font = `${fontSize}px "Space Grotesk", "Inter", monospace`;
+      ctx.textBaseline = "middle";
+      ctx.textAlign = "center";
+
+      const pointer = pointerRef.current;
+      const glitchShift = clamp(glitchAmount, 0, 5) * cellWidth * 0.4;
+      const flicker = 1 + Math.sin(effectiveTime * 10) * flickerAmount * 0.2;
+      const noiseStrength = clamp(noiseAmp, 0, 2) * 0.35;
+      const curvatureStrength = clamp(curvature, 0, 1) * 0.7;
+      const ditherStrength = clamp(dither, 0, 1) * 0.15;
+
+      for (let row = 0; row < rows; row += 1) {
+        const rowNorm = rows > 1 ? row / (rows - 1) : 0.5;
+        const rowOffset = Math.sin(effectiveTime * 1.3 + row * 0.6) * glitchShift;
+        const y = drawY + row * cellHeight + cellHeight / 2;
+
+        for (let col = 0; col < cols; col += 1) {
+          const idx = row * cols + col;
+          const cell = items[idx];
+          if (!cell) continue;
+
+          if (!pause && effectiveTime * 1000 > cell.next) {
+            cell.char = CHARSET[Math.floor(Math.random() * CHARSET.length)];
+            const interval = 400 / Math.max(timeScale, 0.05);
+            cell.next = effectiveTime * 1000 + Math.random() * interval + 100;
+            cell.phase = Math.random();
+          }
+
+          const x = drawX + col * cellWidth + cellWidth / 2 + rowOffset;
+          const colNorm = cols > 1 ? col / (cols - 1) : 0.5;
+
+          const dx = colNorm - 0.5;
+          const dy = rowNorm - 0.5;
+          const curvatureFactor = 1 - curvatureStrength * Math.sqrt(dx * dx + dy * dy) * 2;
+
+          let alpha = brightness * curvatureFactor * flicker * loadProgress;
+          alpha += Math.sin(effectiveTime * 4 + cell.phase * Math.PI * 2) * noiseStrength;
+          alpha += (Math.random() - 0.5) * ditherStrength;
+
+          if (mouseReact && (pointer.active || mouseStrength > 0)) {
+            const distX = colNorm - pointer.x;
+            const distY = rowNorm - pointer.y;
+            const dist = Math.sqrt(distX * distX + distY * distY);
+            alpha += Math.exp(-dist * 6) * mouseStrength * 1.5;
+          }
+
+          alpha = clamp(alpha, 0, 1);
+          if (alpha <= 0.01) continue;
+
+          const textY = y;
+          ctx.fillStyle = `rgba(${tintColor.r}, ${tintColor.g}, ${tintColor.b}, ${alpha})`;
+          ctx.fillText(cell.char, x, textY);
+
+          if (chromaticAberration > 0) {
+            const ca = clamp(chromaticAberration, 0, 2);
+            const offset = cellWidth * 0.12 * ca;
+            ctx.fillStyle = `rgba(${tintColor.r}, ${Math.max(0, tintColor.g - 80)}, ${tintColor.b}, ${alpha * 0.4})`;
+            ctx.fillText(cell.char, x + offset, textY);
+            ctx.fillStyle = `rgba(${Math.max(0, tintColor.r - 120)}, ${tintColor.g}, ${tintColor.b}, ${alpha * 0.4})`;
+            ctx.fillText(cell.char, x - offset, textY);
+          }
+        }
+      }
+
+      ctx.restore();
+
+      if (scanlineIntensity > 0.001) {
+        const density = clamp(scanlineIntensity, 0, 1);
+        const spacing = clamp(2 + 5 * (1 - density), 2, 8);
+        ctx.fillStyle = `rgba(0, 0, 0, ${density * 0.35})`;
+        for (let y = drawY; y < drawY + drawH; y += spacing) {
+          ctx.fillRect(drawX, y, drawW, 1);
+        }
+      }
+    };
+
+    animationRef.current = window.requestAnimationFrame(draw);
 
     return () => {
-      cancelAnimationFrame(rafRef.current);
-      resizeObserver.disconnect();
-      if (mouseReact) ctn.removeEventListener("mousemove", handleMouseMove);
-      if (gl.canvas.parentElement === ctn) ctn.removeChild(gl.canvas);
-      gl.getExtension("WEBGL_lose_context")?.loseContext();
-      loadAnimationStartRef.current = 0;
-      timeOffsetRef.current = Math.random() * 100;
+      disposed = true;
+      window.cancelAnimationFrame(animationRef.current);
+      observerRef.current?.disconnect();
+      animationRef.current = 0;
+      observerRef.current = null;
     };
   }, [
-    dpr,
-    pause,
-    timeScale,
+    lockAspect,
+    aspect,
+    fitMode,
+    bgColor,
+    tintColor,
+    brightness,
     scale,
-    gridMul,
+    gridX,
+    gridY,
     digitSize,
+    timeScale,
+    pause,
     scanlineIntensity,
     glitchAmount,
     flickerAmount,
     noiseAmp,
     chromaticAberration,
-    ditherValue,
+    dither,
     curvature,
-    tintVec,
-    bgVec,
     mouseReact,
     mouseStrength,
     pageLoadAnimation,
-    brightness,
-    handleMouseMove,
-    // fit deps
-    lockAspect,
-    aspect,
-    fitMode,
-    calcFit
   ]);
 
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !mouseReact) return undefined;
+
+    const handlePointerMove = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      pointerRef.current = {
+        x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+        y: clamp((event.clientY - rect.top) / rect.height, 0, 1),
+        active: true,
+      };
+    };
+
+    const handlePointerLeave = () => {
+      pointerRef.current = { x: 0.5, y: 0.5, active: false };
+    };
+
+    canvas.addEventListener("pointermove", handlePointerMove);
+    canvas.addEventListener("pointerleave", handlePointerLeave);
+
+    return () => {
+      canvas.removeEventListener("pointermove", handlePointerMove);
+      canvas.removeEventListener("pointerleave", handlePointerLeave);
+    };
+  }, [mouseReact]);
+
   return (
-    <div
-      ref={containerRef}
-      className={`w-full h-full relative overflow-hidden ${className}`}
+    <canvas
+      ref={canvasRef}
+      className={`block w-full h-full ${className}`}
       style={style}
+      {...rest}
     />
   );
 }
+
+export default FaultyTerminal;

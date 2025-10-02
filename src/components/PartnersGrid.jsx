@@ -42,7 +42,7 @@ function PartnerCard({ name, logo, url, blurb, placeholder = false }) {
                    transition-opacity duration-300 "
       >
         <h3 className="text-base sm:text-lg font-semibold mb-2">{name}</h3>
-        <p className="text-sm sm:text-sm leading-relaxed text-white/90 max-w-[90%] mx-auto mb-2">
+        <p className="text-sm sm:text-sm leading-relaxed text-grey/90 max-w-[90%] mx-auto mb-2">
           {blurb}
         </p>
       </div>

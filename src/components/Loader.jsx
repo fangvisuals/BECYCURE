@@ -1,10 +1,11 @@
-export default function Loader() {
+export default function Loader({ message = "Chargement" } = {}) {
   return (
-    <div className="fixed inset-0 bg-rgb(44, 44, 44) flex items-center justify-center z-50">
-      <div className="loader" style={{ width: '30vw' }}>
-        <div className="light"></div>
-        <div className="black_overlay"></div>
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#071019] text-white/70">
+      <div className="loader w-[32vw] max-w-xs">
+        <div className="light" />
+        <div className="black_overlay" />
       </div>
+      <p className="mt-6 font-mono text-xs uppercase tracking-[0.45em] text-white/40">{message}</p>
     </div>
   );
 }

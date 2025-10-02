@@ -1,38 +1,10 @@
 import React from "react";
 import { Link } from "react-router-dom";
 
-// Alphabet par défaut pour le grésillement
 const DEFAULT_CHARS = "!@#$%^&*()_+-={}[]|;:<>,.?/\\~";
 const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
 
-/**
- * Scramble — composant unifié (texte ou lien interne/externe) avec effet "Matrix".
- *
- * Utilisation :
- *  - Texte : <Scramble text="HUMAINE" as="span" trigger="view" />
- *  - Lien interne : <Scramble to="/services" text="/SERVICES" />
- *  - Lien externe : <Scramble href="https://…" text="/LINKEDIN" newTab />
- *
- * Props principales :
- *  - text / label : contenu cible (string). "label" est alias de "text".
- *  - to / href : route interne (react-router) ou URL externe. Si aucun, rend <Tag>.
- *  - as : tag HTML/React pour le mode texte (défaut : "span"). Ignoré si to/href.
- *  - icon : ReactNode optionnel, affiché avant le texte.
- *  - className : classes appliquées à l'élément conteneur (Link/<a>/<span>).
- *
- * Effet (contrôles) :
- *  - trigger : "hover" | "mount" | "view" (défaut : hover pour liens, view pour texte)
- *  - duration : ms du déroulé global (défaut 800)
- *  - cyclesPerLetter : nb de cycles par lettre avant figeage (défaut 6)
- *  - shuffleMs : cadence de grésillement (défaut 70ms)
- *  - chars : alphabet aléatoire (défaut DEFAULT_CHARS)
- *  - respectMotion : respecte prefers-reduced-motion (défaut true)
- *  - monoDuringScramble : applique font-mono pendant l'effet (défaut false)
- *  - reserveWidth : réserve la largeur (anti-CLS) via min-width: Nch (défaut true)
- *  - newTab : pour href seulement, ouvre dans un nouvel onglet (défaut true)
- */
 export default function Scramble({
-  // contenu & rendu
   text,
   label,
   to,
@@ -41,8 +13,7 @@ export default function Scramble({
   icon = null,
   className = "",
 
-  // effet
-  trigger, // par défaut dépend du type (voir plus bas)
+  trigger,
   duration = 800,
   cyclesPerLetter = 6,
   shuffleMs = 70,
@@ -50,35 +21,33 @@ export default function Scramble({
   respectMotion = true,
   monoDuringScramble = false,
   reserveWidth = true,
+  delay = 0,
+  alsoOnHover = false,
+  initialBlank = false,
 
-  // externes
   newTab = true,
 
-  // reste
   ...rest
 }) {
   const targetRaw = text ?? label ?? "";
   const target = React.useMemo(() => String(targetRaw), [targetRaw]);
 
-  // Élément à rendre : Link / <a> / Tag
   const isInternal = Boolean(to);
   const isExternal = !isInternal && Boolean(href);
   const Elem = isInternal ? Link : isExternal ? "a" : Tag;
 
-  // Déterminer le trigger par défaut si non fourni : hover pour liens, view pour texte
   const triggerFinal = trigger ?? (isInternal || isExternal ? "hover" : "view");
 
-  const [display, setDisplay] = React.useState(target);
+  const [display, setDisplay] = React.useState(initialBlank ? "" : target);
   const [scrambling, setScrambling] = React.useState(false);
+  const [hasRun, setHasRun] = React.useState(false);
 
-  const rafRef = React.useRef(0);
-  const startRef = React.useRef(0);
+  const delayRef = React.useRef(0);
+  const intervalRef = React.useRef(0);
+  const failSafeRef = React.useRef(0);
   const rootRef = React.useRef(null);
-
-  // cadenceur + buffer + suivi des lettres révélées
+  const bufferRef = React.useRef([]);
   const lastShuffleRef = React.useRef(0);
-  const scrambleBufRef = React.useRef([]);
-  const prevRevealRef = React.useRef(-1);
 
   const prefersReduced =
     respectMotion &&
@@ -86,95 +55,144 @@ export default function Scramble({
     window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  const stop = React.useCallback(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = 0;
+  const cancelTimers = React.useCallback(() => {
+    if (delayRef.current) {
+      window.clearTimeout(delayRef.current);
+      delayRef.current = 0;
+    }
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = 0;
+    }
+    if (failSafeRef.current) {
+      window.clearTimeout(failSafeRef.current);
+      failSafeRef.current = 0;
+    }
+  }, []);
+
+  const stopScramble = React.useCallback(() => {
+    cancelTimers();
+    bufferRef.current = [];
     setScrambling(false);
     setDisplay(target);
-    scrambleBufRef.current = [];
-    prevRevealRef.current = -1;
-  }, [target]);
+  }, [cancelTimers, target]);
 
-  const run = React.useCallback(() => {
-    if (!target || prefersReduced) return;
-    setScrambling(true);
-    startRef.current = performance.now();
-    lastShuffleRef.current = 0;
-    scrambleBufRef.current = new Array(target.length);
-    prevRevealRef.current = -1;
+  const runScramble = React.useCallback(() => {
+    if (!target || prefersReduced) {
+      stopScramble();
+      return;
+    }
 
-    const maxTicks = Math.max(1, target.length * cyclesPerLetter);
+    cancelTimers();
 
-    const tick = (now) => {
-      const t = clamp((now - startRef.current) / duration, 0, 1);
-      const pos = Math.floor(t * maxTicks);
-      const revealCount = Math.floor(pos / cyclesPerLetter);
+    const charsArray = target.split("");
+    bufferRef.current = new Array(charsArray.length).fill(" ");
 
-      const shouldShuffle =
-        lastShuffleRef.current === 0 || now - lastShuffleRef.current >= shuffleMs;
-      if (shouldShuffle) lastShuffleRef.current = now;
-
-      const out = new Array(target.length);
-      for (let i = 0; i < target.length; i++) {
+    const produceOutput = (revealCount, shuffle) => {
+      const buffer = bufferRef.current;
+      const output = new Array(charsArray.length);
+      for (let i = 0; i < charsArray.length; i++) {
         if (i < revealCount) {
-          out[i] = target[i];
-        } else {
-          if (shouldShuffle || !scrambleBufRef.current[i]) {
-            const r = Math.floor(Math.random() * chars.length);
-            scrambleBufRef.current[i] = chars[r] || target[i];
-          }
-          out[i] = scrambleBufRef.current[i];
+          buffer[i] = charsArray[i];
+        } else if (shuffle || !buffer[i] || buffer[i] === " ") {
+          const randomIndex = Math.floor(Math.random() * chars.length);
+          buffer[i] = chars[randomIndex] || charsArray[i];
         }
+        output[i] = buffer[i];
+      }
+      return output.join("");
+    };
+
+    const intervalDelay = Math.max(16, shuffleMs || 0);
+    const totalDuration = duration > 0 ? duration : intervalDelay;
+    const totalCycles = Math.max(1, Math.floor((cyclesPerLetter || 1) * charsArray.length));
+
+    setScrambling(true);
+    setDisplay(produceOutput(0, true));
+
+    const startTime = performance.now();
+    lastShuffleRef.current = startTime;
+    let iteration = 0;
+
+    const tick = () => {
+      iteration += 1;
+      const now = performance.now();
+      const timeProgress = totalDuration > 0 ? clamp((now - startTime) / totalDuration, 0, 1) : 1;
+      const cycleProgress = clamp(iteration / totalCycles, 0, 1);
+      const progress = Math.max(timeProgress, cycleProgress);
+      const revealCount = Math.floor(progress * charsArray.length);
+      const shouldShuffle = shuffleMs <= 0 || now - lastShuffleRef.current >= shuffleMs;
+
+      if (shouldShuffle) {
+        lastShuffleRef.current = now;
       }
 
-      if (shouldShuffle || revealCount !== prevRevealRef.current) {
-        setDisplay(out.join(""));
-        prevRevealRef.current = revealCount;
-      }
+      setDisplay(produceOutput(revealCount, shouldShuffle));
 
-      if (t >= 1) {
-        stop();
-      } else {
-        rafRef.current = requestAnimationFrame(tick);
+      if (progress >= 1) {
+        stopScramble();
       }
     };
 
-    rafRef.current = requestAnimationFrame(tick);
-  }, [target, duration, cyclesPerLetter, shuffleMs, chars, prefersReduced, stop]);
+    intervalRef.current = window.setInterval(tick, intervalDelay);
+    failSafeRef.current = window.setTimeout(stopScramble, totalDuration + 500);
+  }, [target, prefersReduced, cyclesPerLetter, duration, shuffleMs, chars, cancelTimers, stopScramble]);
 
-  // Cleanup on unmount
-  React.useEffect(() => () => stop(), [stop]);
+  const scheduleRun = React.useCallback(() => {
+    if (!target || prefersReduced) {
+      setDisplay(target);
+      return;
+    }
 
-  // trigger: mount
+    if (delay > 0) {
+      delayRef.current = window.setTimeout(() => {
+        delayRef.current = 0;
+        setHasRun(true);
+        runScramble();
+      }, delay);
+    } else {
+      setHasRun(true);
+      runScramble();
+    }
+  }, [delay, runScramble, target, prefersReduced]);
+
+  React.useEffect(() => stopScramble, [stopScramble]);
+
   React.useEffect(() => {
-    if (triggerFinal === "mount") run();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [triggerFinal, run]);
+    if (!scrambling) {
+      if (!initialBlank || hasRun) setDisplay(target);
+      else setDisplay("");
+    }
+  }, [target, scrambling, initialBlank, hasRun]);
 
-  // trigger: view (IntersectionObserver)
+  React.useEffect(() => {
+    if (triggerFinal === "mount") scheduleRun();
+  }, [triggerFinal, scheduleRun]);
+
   React.useEffect(() => {
     if (triggerFinal !== "view" || prefersReduced) return;
     const el = rootRef.current;
     if (!el) return;
-    const io = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          run();
-          io.disconnect();
+        if (entries.some((entry) => entry.isIntersecting)) {
+          scheduleRun();
+          observer.disconnect();
         }
       },
       { threshold: 0.35 }
     );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [triggerFinal, run, prefersReduced]);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [triggerFinal, scheduleRun, prefersReduced]);
 
-  const onEnter = triggerFinal === "hover" ? run : undefined;
-  const onLeave = triggerFinal === "hover" ? stop : undefined;
+
+  const hoverEnabled = triggerFinal === "hover" || alsoOnHover === true;
+  const onEnter = hoverEnabled ? scheduleRun : undefined;
+  const onLeave = hoverEnabled ? stopScramble : undefined;
 
   const minWidthCh = React.useMemo(() => Math.max(1, target.length), [target]);
 
-  // Attributs spécifiques aux liens externes
   const extAttrs = isExternal
     ? {
         target: newTab ? "_blank" : undefined,
@@ -182,8 +200,6 @@ export default function Scramble({
       }
     : null;
 
-  // NB: on place le texte dans un <span> pour pouvoir contrôler min-width
-  // tout en laissant les classes (ex: gradient-text) sur le conteneur.
   return (
     <Elem
       ref={rootRef}
@@ -214,24 +230,17 @@ export default function Scramble({
   );
 }
 
-// ————————————————————————————————————————————
-// Exports de commodité (API compatible avec tes anciens composants)
-// ————————————————————————————————————————————
-
 export function ScrambleText(props) {
-  // Texte pur : forcer <span>, pas de to/href
   const { label, text, as = "span", ...rest } = props;
   return <Scramble as={as} text={text ?? label} {...rest} />;
 }
 
 export function ScrambleLink(props) {
-  // Lien interne (react-router)
   const { to, label, text, ...rest } = props;
   return <Scramble to={to} text={text ?? label} {...rest} />;
 }
 
 export function ExternalScrambleLink(props) {
-  // Lien externe (<a>)
   const { href, label, text, ...rest } = props;
   return <Scramble href={href} text={text ?? label} {...rest} />;
 }

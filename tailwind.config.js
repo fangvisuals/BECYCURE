@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html','./src/**/*.{js,ts,jsx,tsx}'],
@@ -27,6 +29,10 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        // Alias UK spelling and provide DEFAULT shade for opacity utilities like text-grey/90
+        grey: { ...colors.gray, DEFAULT: colors.gray[200] },
+      },
       fontFamily: {
         "space-grotesk": ['"Space Grotesk"', "ui-sans-serif", "system-ui", "sans-serif"],
         "inter": ['"Inter"', "ui-sans-serif", "system-ui", "sans-serif"],

@@ -455,6 +455,7 @@ export function ParticleMorphBackground({
   // auto-rotation douce (°/s)
   spin = { x: 0, y: 6, z: 0 },
   spinById,
+  layoutKey,
 }) {
   const targets = useParticleTargets({ shapes, activeId, particleCount, dracoPath, fitRadius });
   const groupRef = React.useRef();
@@ -466,7 +467,19 @@ export function ParticleMorphBackground({
   const effective = React.useMemo(() => {
     const base = { anchor, depth, rotation, scale };
     const rule = pickResponsive(viewport.width, responsive) || {};
-    const perId = (activeId && transformById && transformById[activeId]) || {};
+    // Ancres: autoriser les clés "<id>#<hash>" et "#<hash>" dans transformById
+    // Normalisation: extraire uniquement la dernière ancre (ex: "#/integration#integration-2" -> "#integration-2")
+    const akRaw = typeof layoutKey === "string" ? layoutKey : "";
+    let ak = "";
+    if (akRaw) {
+      const parts = akRaw.split("#");
+      const last = parts[parts.length - 1] || "";
+      ak = last ? `#${last}` : "";
+    }
+    const perIdBase = (activeId && transformById && transformById[activeId]) || {};
+    const perAnchorGlobal = (ak && transformById && transformById[ak]) || {};
+    const perIdAnchor = (ak && activeId && transformById && transformById[`${activeId}${ak}`]) || {};
+    const perId = { ...perIdBase, ...perAnchorGlobal, ...perIdAnchor };
     const mergeAnchor = (a, b) => ({ ...(a || {}), ...(b || {}) });
     return {
       ...base,
@@ -474,7 +487,7 @@ export function ParticleMorphBackground({
       ...perId,
       anchor: mergeAnchor(base.anchor, mergeAnchor(rule.anchor, perId.anchor)),
     };
-  }, [anchor, depth, rotation, scale, responsive, transformById, activeId, viewport.width]);
+  }, [anchor, depth, rotation, scale, responsive, transformById, activeId, viewport.width, layoutKey]);
 
   // mix des couleurs (global + override par page)
   const finalColorMix = React.useMemo(() => {
@@ -603,18 +616,26 @@ export function ParticleMorphBackground({
 
 export function RouteMorphBackground({ shapes, routeMap, layoutKey, ...rest }) {
   const { pathname, hash } = useLocation();
+  const normalizeAnchor = (h) => {
+    if (!h) return "";
+    const parts = String(h).split("#");
+    const last = parts[parts.length - 1] || "";
+    return last ? `#${last}` : "";
+  };
+  const anchorKey = normalizeAnchor(layoutKey || hash);
+
   const activeId = React.useMemo(() => {
-    if (typeof routeMap === "function") return routeMap(pathname, hash);
+    if (typeof routeMap === "function") return routeMap(pathname, anchorKey);
     if (routeMap && typeof routeMap === "object") {
-      const key = hash ? `${pathname}${hash}` : pathname;
+      const key = anchorKey ? `${pathname}${anchorKey}` : pathname;
       return routeMap[key] ?? routeMap[pathname] ?? routeMap["*"] ?? shapes[0]?.id;
     }
     return shapes[0]?.id;
-  }, [pathname, hash, routeMap, shapes]);
+  }, [pathname, anchorKey, routeMap, shapes]);
 
-  const morphKey = `${pathname}|${hash || ""}|${layoutKey || ""}`;
+  const morphKey = `${pathname}|${anchorKey || ""}`;
 
-  return <ParticleMorphBackground shapes={shapes} activeId={activeId} morphKey={morphKey} {...rest} />;
+  return <ParticleMorphBackground shapes={shapes} activeId={activeId} morphKey={morphKey} layoutKey={anchorKey} {...rest} />;
 }
 
 export default ParticleMorphBackground;

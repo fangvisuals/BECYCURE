@@ -1,4 +1,5 @@
-import React from 'react';
+﻿import React from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Link, useSearchParams } from 'react-router-dom';
 import { sanity } from '@/sanity/client';
 import { urlFor } from '@/sanity/image';
@@ -6,6 +7,7 @@ import GradientText from '../components/GradientText';
 import Scramble from '../components/Scramble';
 import BackButton from '../components/BackButton';
 import PageContainer from '../components/layout/PageContainer.jsx';
+import SEO from "@/seo/SEO.jsx";
 
 const PAGE_SIZE = 6;
 
@@ -37,17 +39,33 @@ export default function Blog() {
   const [loading, setLoading] = React.useState(true);
   const [err, setErr] = React.useState(null);
 
-  React.useEffect(() => {
+    React.useEffect(() => {
+    const ctrl = new AbortController();
+    let stale = false;
     setLoading(true);
+    setErr(null);
+
     sanity
-      .fetch(PAGED_QUERY, { offset, end })
+      .fetch(PAGED_QUERY, { offset, end }, { signal: ctrl.signal })
       .then((res) => {
-        setPosts(res.items || []);
-        setTotal(res.total || 0);
+        if (stale) return;
+        setPosts(res?.items || []);
+        setTotal(res?.total || 0);
       })
-      .catch(setErr)
-      .finally(() => setLoading(false));
-  }, [offset, end]);
+      .catch((err) => {
+        if (stale) return;
+        setErr(err);
+      })
+      .finally(() => {
+        if (stale) return;
+        setLoading(false);
+      });
+
+    return () => {
+      stale = true;
+      try { ctrl.abort(); } catch {}
+    };
+  }, [offset, end]);;
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
@@ -72,11 +90,31 @@ export default function Blog() {
     return pages;
   };
 
-  if (loading) return <div className="text-white/80">Chargement…</div>;
-  if (err) return <div className="text-red-400">Erreur: {String(err)}</div>;
+  // Afficher l'erreur inline, pas de retour anticipé pour garder le titre fixe
 
   return (
     <PageContainer>
+    <SEO
+      title="Actualités — Blog | BECYCURE"
+      description="Articles et actualités cybersécurité: intégration SOC/SIEM, services managés, conformité, bonnes pratiques et retours d’expérience."
+      canonicalPath="/blog"
+      ogImage={(import.meta.env.BASE_URL || "/") + "pictures/ogImage.png"}
+      structuredData={[{
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "BECYCURE",
+        url: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin),
+        logo: ((import.meta.env.VITE_SITE_ORIGIN || window.location.origin).replace(/\/$/, "")) + (import.meta.env.BASE_URL || "/") + "android-chrome-512x512.png",
+        sameAs: ["https://fr.linkedin.com/company/becycure"],
+      }, {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Accueil", item: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin) + (import.meta.env.BASE_URL || "/") },
+          { "@type": "ListItem", position: 2, name: "Actualités", item: (import.meta.env.VITE_SITE_ORIGIN || window.location.origin) + (import.meta.env.BASE_URL || "/") + "blog" },
+        ],
+      }]}
+    />
     <main className="relative z-10 mx-auto w-full max-w-4xl">
       <BackButton className="mb-4" to="/" />
       <h1 className="title text-[9.5vw] sm:text-6xl lg:text-7xl leading-[1.05] mb-2">
@@ -88,7 +126,7 @@ export default function Blog() {
             >
               <Scramble
                 as="span"
-                text={"/ ACTUALITÉS"}
+                text={"/ ACTUALIT&Eacute;S"}
                 trigger="mount"
                 duration={300}
                 cyclesPerLetter={4}
@@ -101,7 +139,28 @@ export default function Blog() {
         </span>
       </h1>
 
-      <ul className="grid gap-5 sm:grid-cols-3 pt-10">
+      {/* Erreur */}
+      {err && (
+        <div className="my-4 rounded-lg bg-red-500/10 text-red-400 ring-1 ring-red-500/20 px-4 py-3">Erreur: {String(err)}</div>
+      )}
+
+      {/* Loading discret */}
+      {loading && (
+        <div className="mt-6 flex items-center gap-2 text-white/70"> 
+          <div className="h-4 w-4 rounded-full border-2 border-white/25 border-t-green-400 animate-spin" />
+          <span className="text-xs uppercase tracking-widest">Chargement…</span>
+        </div>
+      )}
+
+      <AnimatePresence mode="wait"> 
+        <motion.ul 
+          key={page}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+          className="grid gap-5 sm:grid-cols-3 pt-10 min-h-[50vh]"
+        >
         {posts.map((p) => {
           const href = `/blog/${p.slug.current}`;
           const img = p.image ? urlFor(p.image)?.width(800).height(450).fit('crop').url() : null;
@@ -148,7 +207,8 @@ export default function Blog() {
             </li>
           );
         })}
-      </ul>
+        </motion.ul>
+      </AnimatePresence>
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -205,3 +265,7 @@ export default function Blog() {
     </PageContainer>
   );
 }
+
+
+
+
